@@ -42,15 +42,7 @@ const state = {
     viewMode: 'editor',
     gitStatus: null
   },
-  githubUser: null,
-  attachedContextFiles: [],
-  terminal: {
-    currentId: null,
-    eventSource: null,
-    isRunning: false,
-    lastError: null
-  },
-  cachedFilesList: []
+  githubUser: null
 };
 
 // DOM Elements
@@ -59,10 +51,6 @@ const el = {
   modeDeepBtn: document.getElementById('modeDeepBtn'),
   modeAutoBtn: document.getElementById('modeAutoBtn'),
   autoModeLabel: document.getElementById('autoModeLabel'),
-  personaDropdownBtn: document.getElementById('personaDropdownBtn'),
-  personaMenuDropdown: document.getElementById('personaMenuDropdown'),
-  personaBtnIcon: document.getElementById('personaBtnIcon'),
-  personaBtnLabel: document.getElementById('personaBtnLabel'),
   balanceDisplay: document.getElementById('balanceDisplay'),
   balanceStatusDot: document.getElementById('balanceStatusDot'),
   refreshBalanceBtn: document.getElementById('refreshBalanceBtn'),
@@ -89,11 +77,6 @@ const el = {
   contextGaugeText: document.getElementById('contextGaugeText'),
   exportSessionBtn: document.getElementById('exportSessionBtn'),
   clearSessionBtn: document.getElementById('clearSessionBtn'),
-  deleteSessionModal: document.getElementById('deleteSessionModal'),
-  deleteSessionModalTitle: document.getElementById('deleteSessionModalTitle'),
-  closeDeleteSessionModalBtn: document.getElementById('closeDeleteSessionModalBtn'),
-  cancelDeleteSessionBtn: document.getElementById('cancelDeleteSessionBtn'),
-  confirmDeleteSessionBtn: document.getElementById('confirmDeleteSessionBtn'),
   messagesContainer: document.getElementById('messagesContainer'),
   welcomeScreen: document.getElementById('welcomeScreen'),
   messagesFlow: document.getElementById('messagesFlow'),
@@ -175,45 +158,13 @@ const el = {
   openFolderStatusNotice: document.getElementById('openFolderStatusNotice'),
   afbName: document.getElementById('afbName'),
   studioSaveFileBtn: document.getElementById('studioSaveFileBtn'),
+  studioToggleDiffBtn: document.getElementById('studioToggleDiffBtn'),
+  diffBtnLabel: document.getElementById('diffBtnLabel'),
   studioTabBtnFiles: document.getElementById('studioTabBtnFiles'),
   studioTabBtnGit: document.getElementById('studioTabBtnGit'),
-  studioTabBtnTerminal: document.getElementById('studioTabBtnTerminal'),
   studioGitBadge: document.getElementById('studioGitBadge'),
-  studioTermBadge: document.getElementById('studioTermBadge'),
   studioPanelFiles: document.getElementById('studioPanelFiles'),
   studioPanelGit: document.getElementById('studioPanelGit'),
-  studioPanelTerminal: document.getElementById('studioPanelTerminal'),
-  studioEditorArea: document.getElementById('studioEditorArea'),
-  editorViewContainer: document.getElementById('editorViewContainer'),
-  previewViewContainer: document.getElementById('previewViewContainer'),
-  studioPreviewIframe: document.getElementById('studioPreviewIframe'),
-  previewFrameWrapper: document.getElementById('previewFrameWrapper'),
-  previewRefreshBtn: document.getElementById('previewRefreshBtn'),
-  previewUrlInput: document.getElementById('previewUrlInput'),
-  previewDeviceDesktop: document.getElementById('previewDeviceDesktop'),
-  previewDeviceTablet: document.getElementById('previewDeviceTablet'),
-  previewDeviceMobile: document.getElementById('previewDeviceMobile'),
-  previewExternalBtn: document.getElementById('previewExternalBtn'),
-  studioViewModes: document.getElementById('studioViewModes'),
-  svmEditorBtn: document.getElementById('svmEditorBtn'),
-  svmSplitBtn: document.getElementById('svmSplitBtn'),
-  svmPreviewBtn: document.getElementById('svmPreviewBtn'),
-  svmDiffBtn: document.getElementById('svmDiffBtn'),
-  btnRunDevServer: document.getElementById('btnRunDevServer'),
-  btnRunInstall: document.getElementById('btnRunInstall'),
-  btnRunTest: document.getElementById('btnRunTest'),
-  btnKillProcess: document.getElementById('btnKillProcess'),
-  btnClearTerminal: document.getElementById('btnClearTerminal'),
-  terminalAutoFixBanner: document.getElementById('terminalAutoFixBanner'),
-  terminalErrorSnippet: document.getElementById('terminalErrorSnippet'),
-  btnAutoFixWithAi: document.getElementById('btnAutoFixWithAi'),
-  terminalConsole: document.getElementById('terminalConsole'),
-  terminalInputCmd: document.getElementById('terminalInputCmd'),
-  btnTerminalSubmit: document.getElementById('btnTerminalSubmit'),
-  contextTagsContainer: document.getElementById('contextTagsContainer'),
-  fileAutocompleteDropdown: document.getElementById('fileAutocompleteDropdown'),
-  fadList: document.getElementById('fadList'),
-  attachFileContextBtn: document.getElementById('attachFileContextBtn'),
   fileTreeFilter: document.getElementById('fileTreeFilter'),
   treeNewFileBtn: document.getElementById('treeNewFileBtn'),
   treeRefreshBtn: document.getElementById('treeRefreshBtn'),
@@ -351,35 +302,25 @@ const el = {
 // ==========================================================================
 
 async function init() {
-  try {
-    setupEventListeners();
-  } catch (err) {
-    console.error('setupEventListeners error:', err);
-  }
-
-  // Load all local SQLite & cached configuration data in parallel
-  await Promise.allSettled([
-    loadSettings(),
-    loadModels(),
-    loadProviders(),
-    loadSessions(),
-    loadLifetimeStats(),
-    loadSnippets()
-  ]);
+  setupEventListeners();
+  await loadSettings();
+  await loadProviders();
+  await loadModels();
+  await fetchBalance();
+  await loadSessions();
+  await loadLifetimeStats();
+  await loadSnippets();
+  await checkGitHubAccount();
 
   // If sessions exist, select first, else create new
-  if (state.sessions && state.sessions.length > 0) {
-    await selectSession(state.sessions[0].id).catch(err => console.error('selectSession error:', err));
+  if (state.sessions.length > 0) {
+    selectSession(state.sessions[0].id);
   } else {
-    await createNewSession().catch(err => console.error('createNewSession error:', err));
+    createNewSession();
   }
 
   // Pre-load preset
   setPreset('r1-architect');
-
-  // Background non-blocking network calls (balance & github)
-  fetchBalance().catch(err => console.warn('Background balance check error:', err));
-  checkGitHubAccount().catch(err => console.warn('Background github check error:', err));
 }
 
 // ==========================================================================
@@ -388,25 +329,19 @@ async function init() {
 
 function setupEventListeners() {
   // Model selector
-  if (el.modelSelector) {
-    el.modelSelector.addEventListener('change', (e) => {
-      state.activeModel = e.target.value;
-      updateSessionModel(state.activeModel);
-      showToast(`Active Model: ${state.activeModel}`);
-    });
-  }
+  el.modelSelector.addEventListener('change', (e) => {
+    state.activeModel = e.target.value;
+    updateSessionModel(state.activeModel);
+    showToast(`Active Model: ${state.activeModel}`);
+  });
 
   // Balance refresh
-  if (el.refreshBalanceBtn) {
-    el.refreshBalanceBtn.addEventListener('click', () => {
-      fetchBalance(true);
-    });
-  }
+  el.refreshBalanceBtn.addEventListener('click', () => {
+    fetchBalance(true);
+  });
 
   // New Chat
-  if (el.newChatBtn) {
-    el.newChatBtn.addEventListener('click', () => createNewSession());
-  }
+  el.newChatBtn.addEventListener('click', () => createNewSession());
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -419,10 +354,6 @@ function setupEventListeners() {
       toggleStudio();
     }
     if (e.key === 'Escape') {
-      if (el.deleteSessionModal && el.deleteSessionModal.style.display !== 'none') {
-        hideDeleteSessionModal();
-        return;
-      }
       if (state.studio && state.studio.isOpen) {
         closeStudio();
         return;
@@ -435,65 +366,32 @@ function setupEventListeners() {
   });
 
   // Prompt input
-  if (el.promptTextarea) {
-    el.promptTextarea.addEventListener('input', () => {
-      autoResizeTextarea(el.promptTextarea);
-      updatePromptTokenEstimate();
-    });
+  el.promptTextarea.addEventListener('input', () => {
+    autoResizeTextarea(el.promptTextarea);
+    updatePromptTokenEstimate();
+  });
 
-    el.promptTextarea.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (!state.isStreaming) handleSendMessage();
-      }
-    });
-  }
-
-  if (el.sendBtn) {
-    el.sendBtn.addEventListener('click', () => {
+  el.promptTextarea.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
       if (!state.isStreaming) handleSendMessage();
-    });
-  }
+    }
+  });
+
+  el.sendBtn.addEventListener('click', () => {
+    if (!state.isStreaming) handleSendMessage();
+  });
 
   // Stop Generation
-  if (el.abortGenerationBtn) {
-    el.abortGenerationBtn.addEventListener('click', abortCurrentStream);
-  }
+  el.abortGenerationBtn.addEventListener('click', abortCurrentStream);
 
   // Preset / Role Buttons
   document.querySelectorAll('.preset-pill, .role-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       const preset = btn.getAttribute('data-preset');
       setPreset(preset);
-      if (el.personaMenuDropdown) {
-        el.personaMenuDropdown.style.display = 'none';
-        if (el.personaDropdownBtn && el.personaDropdownBtn.parentElement) {
-          el.personaDropdownBtn.parentElement.classList.remove('open');
-        }
-      }
     });
   });
-
-  // Persona Dropdown Toggle & Outside Click Dismiss
-  if (el.personaDropdownBtn && el.personaMenuDropdown) {
-    el.personaDropdownBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isClosed = el.personaMenuDropdown.style.display === 'none' || !el.personaMenuDropdown.style.display;
-      el.personaMenuDropdown.style.display = isClosed ? 'flex' : 'none';
-      if (el.personaDropdownBtn.parentElement) {
-        el.personaDropdownBtn.parentElement.classList.toggle('open', isClosed);
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.persona-dropdown-container')) {
-        el.personaMenuDropdown.style.display = 'none';
-        if (el.personaDropdownBtn && el.personaDropdownBtn.parentElement) {
-          el.personaDropdownBtn.parentElement.classList.remove('open');
-        }
-      }
-    });
-  }
 
   // Execution Mode Quick Switcher (Fast V4.1 vs Deep R1 vs Auto)
   if (el.modeFastBtn) el.modeFastBtn.addEventListener('click', () => setExecutionMode('fast'));
@@ -512,121 +410,85 @@ function setupEventListeners() {
   });
 
   // System Prompt drawer
-  if (el.toggleSystemPromptBtn) {
-    el.toggleSystemPromptBtn.addEventListener('click', () => {
-      if (!el.systemPromptDrawer) return;
-      const isHidden = el.systemPromptDrawer.style.display === 'none';
-      el.systemPromptDrawer.style.display = isHidden ? 'block' : 'none';
-      if (isHidden && el.systemPromptInput) {
-        el.systemPromptInput.value = state.systemPrompt;
-        el.systemPromptInput.focus();
-      }
-    });
-  }
+  el.toggleSystemPromptBtn.addEventListener('click', () => {
+    const isHidden = el.systemPromptDrawer.style.display === 'none';
+    el.systemPromptDrawer.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      el.systemPromptInput.value = state.systemPrompt;
+      el.systemPromptInput.focus();
+    }
+  });
 
-  if (el.closeSystemPromptDrawer) {
-    el.closeSystemPromptDrawer.addEventListener('click', () => {
-      if (el.systemPromptDrawer) el.systemPromptDrawer.style.display = 'none';
-    });
-  }
+  el.closeSystemPromptDrawer.addEventListener('click', () => {
+    el.systemPromptDrawer.style.display = 'none';
+  });
 
-  if (el.systemPromptInput) {
-    el.systemPromptInput.addEventListener('change', () => {
-      state.systemPrompt = el.systemPromptInput.value;
-      if (state.currentSessionId) {
-        fetch(`/api/sessions/${state.currentSessionId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_prompt: state.systemPrompt })
-        });
-      }
-    });
-  }
+  el.systemPromptInput.addEventListener('change', () => {
+    state.systemPrompt = el.systemPromptInput.value;
+    if (state.currentSessionId) {
+      fetch(`/api/sessions/${state.currentSessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_prompt: state.systemPrompt })
+      });
+    }
+  });
 
   // Session search
-  if (el.sessionSearchInput) {
-    el.sessionSearchInput.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase().trim();
-      renderSessionList(query);
-    });
-  }
+  el.sessionSearchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    renderSessionList(query);
+  });
 
   // Rename session
-  if (el.renameSessionBtn) {
-    el.renameSessionBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      startRenamingSession();
-    });
-  }
-  if (el.activeSessionTitle) {
-    el.activeSessionTitle.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      startRenamingSession();
-    });
-  }
-  if (el.saveSessionTitleBtn) {
-    el.saveSessionTitleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+  el.renameSessionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startRenamingSession();
+  });
+  el.activeSessionTitle.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    startRenamingSession();
+  });
+  el.saveSessionTitleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    saveSessionTitle();
+  });
+  el.cancelSessionTitleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cancelRenamingSession();
+  });
+  el.sessionTitleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
       saveSessionTitle();
-    });
-  }
-  if (el.cancelSessionTitleBtn) {
-    el.cancelSessionTitleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
       cancelRenamingSession();
-    });
-  }
-  if (el.sessionTitleInput) {
-    el.sessionTitleInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        saveSessionTitle();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelRenamingSession();
-      }
-    });
-  }
+    }
+  });
 
   // Export session
-  if (el.exportSessionBtn) el.exportSessionBtn.addEventListener('click', exportSessionTranscript);
+  el.exportSessionBtn.addEventListener('click', exportSessionTranscript);
 
-  // Clear session (header trash can button)
-  if (el.clearSessionBtn) {
-    el.clearSessionBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (state.currentSessionId) {
-        showDeleteSessionModal(state.currentSessionId);
-      }
-    });
-  }
-
-  // Delete Conversation Modal
-  if (el.closeDeleteSessionModalBtn) el.closeDeleteSessionModalBtn.addEventListener('click', hideDeleteSessionModal);
-  if (el.cancelDeleteSessionBtn) el.cancelDeleteSessionBtn.addEventListener('click', hideDeleteSessionModal);
-  if (el.confirmDeleteSessionBtn) el.confirmDeleteSessionBtn.addEventListener('click', executeDeleteSession);
-  if (el.deleteSessionModal) {
-    el.deleteSessionModal.addEventListener('click', (e) => {
-      if (e.target === el.deleteSessionModal) hideDeleteSessionModal();
-    });
-  }
+  // Clear session
+  el.clearSessionBtn.addEventListener('click', deleteCurrentSession);
 
   // Vault drawer toggle
-  if (el.openVaultBtn) el.openVaultBtn.addEventListener('click', openVault);
-  if (el.closeVaultBtn) el.closeVaultBtn.addEventListener('click', closeVault);
-  if (el.vaultBackdrop) el.vaultBackdrop.addEventListener('click', closeVault);
+  el.openVaultBtn.addEventListener('click', openVault);
+  el.closeVaultBtn.addEventListener('click', closeVault);
+  el.vaultBackdrop.addEventListener('click', closeVault);
 
   // Settings Modal
-  if (el.openSettingsBtn) el.openSettingsBtn.addEventListener('click', openSettings);
-  if (el.closeSettingsModalBtn) el.closeSettingsModalBtn.addEventListener('click', closeSettings);
-  if (el.cancelSettingsBtn) el.cancelSettingsBtn.addEventListener('click', closeSettings);
-  if (el.saveSettingsBtn) el.saveSettingsBtn.addEventListener('click', saveSettings);
-  if (el.testConnectionBtn) el.testConnectionBtn.addEventListener('click', testDeepSeekConnection);
-  if (el.toggleApiKeyVisibility) el.toggleApiKeyVisibility.addEventListener('click', toggleApiKeyVisibility);
+  el.openSettingsBtn.addEventListener('click', openSettings);
+  el.closeSettingsModalBtn.addEventListener('click', closeSettings);
+  el.cancelSettingsBtn.addEventListener('click', closeSettings);
+  el.saveSettingsBtn.addEventListener('click', saveSettings);
+  el.testConnectionBtn.addEventListener('click', testDeepSeekConnection);
+  el.toggleApiKeyVisibility.addEventListener('click', toggleApiKeyVisibility);
 
   // Settings Tabs
-  if (el.tabBtnDeepSeek) el.tabBtnDeepSeek.addEventListener('click', () => switchSettingsTab('tabDeepSeek'));
-  if (el.tabBtnProviders) el.tabBtnProviders.addEventListener('click', () => switchSettingsTab('tabProviders'));
+  el.tabBtnDeepSeek.addEventListener('click', () => switchSettingsTab('tabDeepSeek'));
+  el.tabBtnProviders.addEventListener('click', () => switchSettingsTab('tabProviders'));
   if (el.tabBtnGitHub) el.tabBtnGitHub.addEventListener('click', () => switchSettingsTab('tabGitHub'));
   if (el.toggleGhKeyVisibility) el.toggleGhKeyVisibility.addEventListener('click', toggleGhKeyVisibility);
 
@@ -679,77 +541,10 @@ function setupEventListeners() {
       if (e.key === 'Escape') closeOpenFolderModal();
     });
   }
-  // View Mode Selectors (Editor, Split, Preview, Diff)
-  if (el.svmEditorBtn) el.svmEditorBtn.addEventListener('click', () => setStudioViewMode('editor'));
-  if (el.svmSplitBtn) el.svmSplitBtn.addEventListener('click', () => setStudioViewMode('split'));
-  if (el.svmPreviewBtn) el.svmPreviewBtn.addEventListener('click', () => setStudioViewMode('preview'));
-  if (el.svmDiffBtn) el.svmDiffBtn.addEventListener('click', () => setStudioViewMode('diff'));
-
-  // Live Web Preview Controls
-  if (el.previewRefreshBtn) el.previewRefreshBtn.addEventListener('click', reloadPreview);
-  if (el.previewUrlInput) el.previewUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') reloadPreview(); });
-  if (el.previewDeviceDesktop) el.previewDeviceDesktop.addEventListener('click', () => setPreviewDevice('desktop'));
-  if (el.previewDeviceTablet) el.previewDeviceTablet.addEventListener('click', () => setPreviewDevice('tablet'));
-  if (el.previewDeviceMobile) el.previewDeviceMobile.addEventListener('click', () => setPreviewDevice('mobile'));
-  if (el.previewExternalBtn) el.previewExternalBtn.addEventListener('click', openPreviewExternal);
-
-  // Terminal Runner Controls
-  if (el.studioTabBtnTerminal) el.studioTabBtnTerminal.addEventListener('click', () => switchStudioTab('terminal'));
-  if (el.btnRunDevServer) el.btnRunDevServer.addEventListener('click', handleQuickDevServer);
-  if (el.btnRunInstall) el.btnRunInstall.addEventListener('click', () => runTerminalCommand('npm install'));
-  if (el.btnRunTest) el.btnRunTest.addEventListener('click', () => runTerminalCommand('npm test'));
-  if (el.btnKillProcess) el.btnKillProcess.addEventListener('click', killTerminalProcess);
-  if (el.btnClearTerminal) el.btnClearTerminal.addEventListener('click', clearTerminalConsole);
-  if (el.btnTerminalSubmit) el.btnTerminalSubmit.addEventListener('click', handleTerminalInputSubmit);
-  if (el.terminalInputCmd) el.terminalInputCmd.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleTerminalInputSubmit(); });
-  if (el.btnAutoFixWithAi) el.btnAutoFixWithAi.addEventListener('click', handleTerminalAutoFix);
-
-  // Context Tagging (@file) Autocomplete Controls
-  if (el.attachFileContextBtn) el.attachFileContextBtn.addEventListener('click', () => openFileAutocomplete(''));
-  if (el.promptTextarea) {
-    el.promptTextarea.addEventListener('input', () => {
-      const val = el.promptTextarea.value;
-      const match = val.match(/@([a-zA-Z0-9_\-./]*)$/);
-      if (match) {
-        openFileAutocomplete(match[1]);
-      } else {
-        closeFileAutocomplete();
-      }
-    });
-
-    el.promptTextarea.addEventListener('keydown', (e) => {
-      if (el.fileAutocompleteDropdown && el.fileAutocompleteDropdown.style.display !== 'none') {
-        const items = el.fadList ? Array.from(el.fadList.querySelectorAll('.fad-item')) : [];
-        let activeIdx = items.findIndex(item => item.classList.contains('active'));
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          if (items.length > 0) {
-            if (activeIdx >= 0) items[activeIdx].classList.remove('active');
-            activeIdx = (activeIdx + 1) % items.length;
-            items[activeIdx].classList.add('active');
-            items[activeIdx].scrollIntoView({ block: 'nearest' });
-          }
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          if (items.length > 0) {
-            if (activeIdx >= 0) items[activeIdx].classList.remove('active');
-            activeIdx = (activeIdx - 1 + items.length) % items.length;
-            items[activeIdx].classList.add('active');
-            items[activeIdx].scrollIntoView({ block: 'nearest' });
-          }
-        } else if (e.key === 'Enter' || e.key === 'Tab') {
-          if (items.length > 0 && activeIdx >= 0) {
-            e.preventDefault();
-            items[activeIdx].click();
-          }
-        } else if (e.key === 'Escape') {
-          closeFileAutocomplete();
-        }
-      }
-    });
-  }
-
   if (el.studioSaveFileBtn) el.studioSaveFileBtn.addEventListener('click', saveCurrentFile);
+  if (el.studioToggleDiffBtn) el.studioToggleDiffBtn.addEventListener('click', () => {
+    setStudioViewMode(state.studio.viewMode === 'editor' ? 'diff' : 'editor');
+  });
   if (el.studioHeaderGithubBtn) {
     el.studioHeaderGithubBtn.addEventListener('click', () => switchStudioTab('git'));
   }
@@ -794,14 +589,6 @@ function setupEventListeners() {
   if (el.gitPullBtn) el.gitPullBtn.addEventListener('click', pullFromRemote);
   if (el.gitAiCommitBtn) el.gitAiCommitBtn.addEventListener('click', generateAiCommitMessage);
   if (el.gitCommitBtn) el.gitCommitBtn.addEventListener('click', commitGitChanges);
-  if (el.gitCommitInput) {
-    el.gitCommitInput.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        commitGitChanges();
-      }
-    });
-  }
   if (el.gitPushBtn) el.gitPushBtn.addEventListener('click', pushGitBranch);
   if (el.gitCreatePrBtn) el.gitCreatePrBtn.addEventListener('click', createGitHubPullRequest);
 
@@ -874,21 +661,15 @@ function setupEventListeners() {
   if (el.confirmEditRemoteBtn) el.confirmEditRemoteBtn.addEventListener('click', submitEditRemote);
 
   // Header Auto-Fetch Models Button
-  if (el.fetchModelsBtn) {
-    el.fetchModelsBtn.addEventListener('click', () => {
-      // Determine provider for current model or default to deepseek
-      if (el.modelSelector && el.modelSelector.options && el.modelSelector.selectedIndex >= 0) {
-        const selectedOpt = el.modelSelector.options[el.modelSelector.selectedIndex];
-        const provId = selectedOpt?.dataset?.provider || 'deepseek';
-        fetchModelsForProvider(provId);
-      } else {
-        fetchModelsForProvider('deepseek');
-      }
-    });
-  }
+  el.fetchModelsBtn.addEventListener('click', () => {
+    // Determine provider for current model or default to deepseek
+    const selectedOpt = el.modelSelector.options[el.modelSelector.selectedIndex];
+    const provId = selectedOpt?.dataset?.provider || 'deepseek';
+    fetchModelsForProvider(provId);
+  });
 
   // Add Custom Provider Button
-  if (el.addProviderBtn) el.addProviderBtn.addEventListener('click', addNewProvider);
+  el.addProviderBtn.addEventListener('click', addNewProvider);
 
   // Image / Screenshot Attachment (⌘+V Paste, Drop, File Dialog)
   window.addEventListener('paste', handleGlobalPaste);
@@ -1016,89 +797,48 @@ async function loadModels() {
   try {
     const res = await fetch('/api/models');
     const models = await res.json();
+    state.models = models;
 
-    const defaultFallbackModels = [
-      { id: 'deepseek-reasoner', provider_id: 'deepseek', provider_name: 'DeepSeek', name: 'deepseek-reasoner (R1 Thinking)' },
-      { id: 'deepseek-chat', provider_id: 'deepseek', provider_name: 'DeepSeek', name: 'deepseek-chat (V4.1 Coder)' },
-      { id: 'deepseek/deepseek-r1', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: DeepSeek R1' },
-      { id: 'deepseek/deepseek-chat', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: DeepSeek V3' },
-      { id: 'anthropic/claude-3.5-sonnet', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: Claude 3.5 Sonnet' },
-      { id: 'openai/gpt-4o', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: OpenAI GPT-4o' },
-      { id: 'meta-llama/llama-3.3-70b-instruct', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: Llama 3.3 70B' },
-      { id: 'glm-4-plus', provider_id: 'zai', provider_name: 'Z.ai (GLM)', name: 'Z.ai: GLM-4-Plus (Flagship)' },
-      { id: 'glm-4-flash', provider_id: 'zai', provider_name: 'Z.ai (GLM)', name: 'Z.ai: GLM-4-Flash (Free)' },
-      { id: 'glm-4-long', provider_id: 'zai', provider_name: 'Z.ai (GLM)', name: 'Z.ai: GLM-4-Long (1M Context)' },
-      { id: 'codegeex-4', provider_id: 'zai', provider_name: 'Z.ai (GLM)', name: 'Z.ai: CodeGeeX-4 (Coding Expert)' }
-    ];
-
-    const modelList = Array.isArray(models) ? [...models] : [];
-    for (const dfm of defaultFallbackModels) {
-      if (!modelList.find(m => m.id === dfm.id)) {
-        modelList.push(dfm);
-      }
-    }
-    state.models = modelList;
-
-    if (modelList.length === 0) return;
+    if (!models || models.length === 0) return;
 
     // Group models by provider
     const grouped = {};
-    for (const m of modelList) {
-      const pName = m.provider_name || (m.provider_id ? m.provider_id.toUpperCase() : 'DEEPSEEK');
+    for (const m of models) {
+      const pName = m.provider_name || m.provider_id.toUpperCase();
       if (!grouped[pName]) grouped[pName] = [];
       grouped[pName].push(m);
     }
 
-    if (el.modelSelector) {
-      el.modelSelector.innerHTML = '';
-      for (const [providerName, provModels] of Object.entries(grouped)) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = providerName;
-        for (const m of provModels) {
-          const opt = document.createElement('option');
-          opt.value = m.id;
-          opt.dataset.provider = m.provider_id || 'deepseek';
-          let prefix = '⚡ ';
-          let priceTag = '';
-          const pId = m.provider_id || '';
-          if (pId === 'deepseek') {
-            if (m.id.includes('reasoner') || m.id.includes('r1')) {
-              prefix = '🧠 ';
-              priceTag = ' — [In ¥1.00 • Out ¥2.19/M]';
-            } else {
-              prefix = '⚡ ';
-              priceTag = ' — [In ¥1.00 • Out ¥2.00/M]';
-            }
-          } else if (pId === 'openrouter') {
-            prefix = '🌐 ';
-            priceTag = ' — [OpenRouter]';
-          } else if (pId === 'zai') {
-            prefix = '⚡ ';
-            priceTag = ' — [Z.ai GLM]';
-          } else if (pId === 'openai') {
-            prefix = '🤖 ';
-            priceTag = ' — [OpenAI]';
-          } else if (pId === 'groq') {
-            prefix = '⚡ ';
-            priceTag = ' — [Groq]';
-          } else if (pId === 'ollama') {
-            prefix = '🦙 ';
-            priceTag = ' — [Local]';
-          } else if (m.id.includes('gpt-4o')) {
-            prefix = '🌐 ';
-            priceTag = ' — [In $2.50 • Out $10/M]';
-          }
-          opt.textContent = `${prefix}${m.name || m.id}${priceTag}`;
-          if (m.id === state.activeModel) opt.selected = true;
-          optgroup.appendChild(opt);
+    el.modelSelector.innerHTML = '';
+    for (const [providerName, provModels] of Object.entries(grouped)) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = providerName;
+      for (const m of provModels) {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.dataset.provider = m.provider_id;
+        let prefix = '⚡ ';
+        let priceTag = '';
+        if (m.id.includes('reasoner') || m.id.includes('r1')) {
+          prefix = '🧠 ';
+          priceTag = ' — [In ¥1.00 • Out ¥2.19/M]';
+        } else if (m.id.includes('chat') || m.id.includes('v3') || m.id.includes('flash')) {
+          prefix = '⚡ ';
+          priceTag = ' — [In ¥1.00 • Out ¥2.00/M]';
+        } else if (m.id.includes('gpt-4o')) {
+          prefix = '🌐 ';
+          priceTag = ' — [In $2.50 • Out $10/M]';
         }
-        el.modelSelector.appendChild(optgroup);
+        opt.textContent = `${prefix}${m.name || m.id}${priceTag}`;
+        if (m.id === state.activeModel) opt.selected = true;
+        optgroup.appendChild(opt);
       }
+      el.modelSelector.appendChild(optgroup);
+    }
 
-      // Ensure active model is selected if present
-      if (state.activeModel) {
-        el.modelSelector.value = state.activeModel;
-      }
+    // Ensure active model is selected if present
+    if (state.activeModel) {
+      el.modelSelector.value = state.activeModel;
     }
     updateModelRateBadge(state.activeModel);
   } catch (err) {
@@ -1115,12 +855,6 @@ function updateModelRateBadge(modelId) {
   } else if (m.includes('chat') || m.includes('v4') || m.includes('v3') || m.includes('flash')) {
     el.activeModelRatePill.innerHTML = `<span>In: ¥1.00/M</span><span class="rate-sep">•</span><span>Out: ¥2.00/M</span>`;
     el.activeModelRatePill.title = 'DeepSeek-V4.1 (Chat): Cache Miss ¥1.00/M, Hit ¥0.14/M, Output ¥2.00/M';
-  } else if (m.includes('/') || m.includes('openrouter')) {
-    el.activeModelRatePill.innerHTML = `<span>🌐 OpenRouter</span>`;
-    el.activeModelRatePill.title = 'OpenRouter Multi-Provider Cloud Model';
-  } else if (m.startsWith('glm') || m.startsWith('codegeex')) {
-    el.activeModelRatePill.innerHTML = `<span>⚡ Z.ai GLM</span>`;
-    el.activeModelRatePill.title = 'Z.ai (Zhipu AI) GLM Model';
   } else if (m.includes('gpt-4o')) {
     el.activeModelRatePill.innerHTML = `<span>In: $2.50/M</span><span class="rate-sep">•</span><span>Out: $10.00/M</span>`;
     el.activeModelRatePill.title = 'OpenAI GPT-4o Pricing';
@@ -1155,30 +889,7 @@ async function fetchModelsForProvider(providerId) {
 async function loadProviders() {
   try {
     const res = await fetch('/api/providers');
-    const provs = await res.json();
-    state.providers = Array.isArray(provs) ? [...provs] : [];
-
-    // Ensure default providers (openrouter, zai, deepseek, etc.) are present in state
-    const knownDefaults = [
-      { id: 'deepseek', name: 'DeepSeek', base_url: 'https://api.deepseek.com' },
-      { id: 'openrouter', name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1' },
-      { id: 'zai', name: 'Z.ai (GLM)', base_url: 'https://api.z.ai/api/paas/v4' },
-      { id: 'openai', name: 'OpenAI', base_url: 'https://api.openai.com/v1' },
-      { id: 'groq', name: 'Groq', base_url: 'https://api.groq.com/openai/v1' },
-      { id: 'ollama', name: 'Ollama (Local)', base_url: 'http://localhost:11434/v1' }
-    ];
-    for (const kd of knownDefaults) {
-      if (!state.providers.find(p => p.id === kd.id)) {
-        state.providers.push({
-          id: kd.id,
-          name: kd.name,
-          base_url: kd.base_url,
-          api_key: '',
-          model_count: 0
-        });
-      }
-    }
-
+    state.providers = await res.json();
     renderProvidersList();
   } catch (err) {
     console.error('Failed to load providers:', err);
@@ -1189,264 +900,53 @@ function renderProvidersList() {
   if (!el.providersList) return;
   el.providersList.innerHTML = '';
 
-  const providerMeta = {
-    'openrouter': {
-      icon: '🌐',
-      displayName: 'OpenRouter',
-      badge: 'All-in-One Cloud',
-      defaultUrl: 'https://openrouter.ai/api/v1',
-      keyPlaceholder: 'Paste OpenRouter Key (sk-or-v1-...)',
-      keyLink: 'https://openrouter.ai/keys',
-      keyLinkLabel: 'Get OpenRouter Key ↗'
-    },
-    'zai': {
-      icon: '⚡',
-      displayName: 'Z.ai (GLM)',
-      badge: 'Zhipu AI GLM-4',
-      defaultUrl: 'https://api.z.ai/api/paas/v4',
-      keyPlaceholder: 'Paste Z.ai API Key (e.g. 1a2b3c4d...)',
-      keyLink: 'https://z.ai',
-      keyLinkLabel: 'Get Z.ai Key ↗',
-      planToggle: true
-    },
-    'deepseek': {
-      icon: '🧠',
-      displayName: 'DeepSeek',
-      badge: 'Official API',
-      defaultUrl: 'https://api.deepseek.com',
-      keyPlaceholder: 'Paste DeepSeek Key (sk-...)',
-      keyLink: 'https://platform.deepseek.com/api_keys',
-      keyLinkLabel: 'Get DeepSeek Key ↗'
-    },
-    'openai': {
-      icon: '🤖',
-      displayName: 'OpenAI',
-      badge: 'Official API',
-      defaultUrl: 'https://api.openai.com/v1',
-      keyPlaceholder: 'Paste OpenAI Key (sk-...)',
-      keyLink: 'https://platform.openai.com/api-keys',
-      keyLinkLabel: 'Get OpenAI Key ↗'
-    },
-    'groq': {
-      icon: '⚡',
-      displayName: 'Groq',
-      badge: 'Ultra-Fast LPU',
-      defaultUrl: 'https://api.groq.com/openai/v1',
-      keyPlaceholder: 'Paste Groq Key (gsk_...)',
-      keyLink: 'https://console.groq.com/keys',
-      keyLinkLabel: 'Get Groq Key ↗'
-    },
-    'ollama': {
-      icon: '🦙',
-      displayName: 'Ollama',
-      badge: 'Local Offline Engine',
-      defaultUrl: 'http://localhost:11434/v1',
-      keyPlaceholder: 'No API Key required for local Ollama',
-      keyLink: 'https://ollama.com',
-      keyLinkLabel: 'Ollama Website ↗',
-      isLocal: true
-    }
-  };
-
-  const priorityOrder = ['deepseek', 'openrouter', 'zai', 'openai', 'groq', 'ollama'];
-  const sorted = [...(state.providers || [])].sort((a, b) => {
-    const idxA = priorityOrder.indexOf(a.id);
-    const idxB = priorityOrder.indexOf(b.id);
-    const orderA = idxA === -1 ? 99 : idxA;
-    const orderB = idxB === -1 ? 99 : idxB;
-    return orderA - orderB;
-  });
-
-  sorted.forEach(p => {
-    const meta = providerMeta[p.id] || {
-      icon: '🔌',
-      displayName: p.name || p.id,
-      badge: 'Custom Provider',
-      defaultUrl: p.base_url,
-      keyPlaceholder: 'API Key (Bearer Token)',
-      keyLink: '',
-      keyLinkLabel: ''
-    };
-
-    const hasKey = Boolean(p.api_key && p.api_key.trim());
-    const isLocal = meta.isLocal || p.id === 'ollama';
-
+  state.providers.forEach(p => {
     const card = document.createElement('div');
-    card.className = `provider-item-card ${hasKey ? 'is-configured' : ''}`;
-    card.setAttribute('data-prov-id', p.id);
-
+    card.className = 'provider-item-card';
     card.innerHTML = `
       <div class="pic-header">
-        <div class="pic-title-row">
-          <span class="pic-icon">${meta.icon}</span>
-          <span class="pic-name">${escapeHtml(meta.displayName)}</span>
-          <span class="pic-badge">${meta.badge}</span>
-          <span class="pic-count-badge">${p.model_count || 0} models</span>
-          ${isLocal 
-            ? '<span class="prov-status-pill local">🦙 Local Engine</span>'
-            : hasKey 
-              ? '<span class="prov-status-pill configured">✅ Key Saved</span>'
-              : '<span class="prov-status-pill unconfigured">⚠️ Key Needed</span>'
-          }
-        </div>
-        <div class="pic-actions">
-          <button class="btn-fetch-prov" data-prov-id="${p.id}" title="Save and auto-fetch all models from ${escapeHtml(meta.displayName)}">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-            </svg>
-            <span>Auto-Fetch Models</span>
-          </button>
-        </div>
+        <span class="pic-name">
+          <span>${escapeHtml(p.name)}</span>
+          <span class="pic-badge">${p.model_count || 0} models</span>
+        </span>
+        <button class="btn-fetch-prov" data-prov-id="${p.id}">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+          <span>Auto-Fetch Models</span>
+        </button>
       </div>
-
-      <div class="pic-body-new">
-        <!-- API Key Row -->
-        <div class="prov-input-row">
-          <div class="prov-key-wrapper">
-            <span class="prov-key-label">API Key:</span>
-            <input 
-              type="password" 
-              class="prov-key-input" 
-              value="${escapeHtml(p.api_key || '')}" 
-              placeholder="${escapeHtml(meta.keyPlaceholder)}" 
-              data-id="${p.id}"
-              ${isLocal ? 'disabled' : ''}
-              autocomplete="off"
-            >
-            ${!isLocal ? `
-              <button type="button" class="btn-toggle-prov-pw" title="Show/Hide API Key">👁️</button>
-              <button type="button" class="btn-save-prov-key" title="Save Key">Save</button>
-            ` : ''}
-          </div>
-        </div>
-
-        <!-- URL & Extra Options Row -->
-        <div class="prov-sub-row">
-          <div class="prov-endpoint-info">
-            <span class="prov-endpoint-label">Endpoint:</span>
-            <span class="prov-endpoint-val" title="Click pencil to edit custom URL">${escapeHtml(p.base_url)}</span>
-            <button type="button" class="btn-edit-url-toggle" title="Edit Endpoint URL">✏️</button>
-            <input type="text" class="prov-url-input" value="${escapeHtml(p.base_url)}" style="display: none;" data-id="${p.id}">
-          </div>
-
-          ${p.id === 'zai' ? `
-            <div class="zai-plan-switch">
-              <button type="button" class="zai-plan-btn ${p.base_url.includes('coding') ? '' : 'active'}" data-url="https://api.z.ai/api/paas/v4" title="General OpenAI compatible endpoint">General Plan</button>
-              <button type="button" class="zai-plan-btn ${p.base_url.includes('coding') ? 'active' : ''}" data-url="https://api.z.ai/api/coding/paas/v4" title="Specialized coding plan endpoint">Coding Plan</button>
-            </div>
-          ` : ''}
-
-          ${meta.keyLink ? `
-            <a href="${meta.keyLink}" target="_blank" class="prov-link">${meta.keyLinkLabel}</a>
-          ` : ''}
-        </div>
+      <div class="pic-body">
+        <input type="text" class="prov-url-input" value="${escapeHtml(p.base_url)}" placeholder="Base URL" data-id="${p.id}">
+        <input type="password" class="prov-key-input" value="${escapeHtml(p.api_key || '')}" placeholder="API Key (Bearer Token)" data-id="${p.id}">
       </div>
     `;
 
-    // Toggle password visibility
-    const pwInput = card.querySelector('.prov-key-input');
-    const togglePwBtn = card.querySelector('.btn-toggle-prov-pw');
-    if (togglePwBtn && pwInput) {
-      togglePwBtn.addEventListener('click', () => {
-        pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+    // Fetch models button
+    card.querySelector('.btn-fetch-prov').addEventListener('click', async () => {
+      // Save current input values first
+      const urlInput = card.querySelector('.prov-url-input').value.trim();
+      const keyInput = card.querySelector('.prov-key-input').value.trim();
+      await fetch('/api/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, name: p.name, base_url: urlInput, api_key: keyInput })
       });
-    }
-
-    // Toggle URL editing
-    const editUrlBtn = card.querySelector('.btn-edit-url-toggle');
-    const urlDisplay = card.querySelector('.prov-endpoint-val');
-    const urlInput = card.querySelector('.prov-url-input');
-    if (editUrlBtn && urlDisplay && urlInput) {
-      editUrlBtn.addEventListener('click', () => {
-        const isHidden = urlInput.style.display === 'none';
-        urlInput.style.display = isHidden ? 'inline-block' : 'none';
-        urlDisplay.style.display = isHidden ? 'none' : 'inline';
-        if (isHidden) urlInput.focus();
-      });
-      urlInput.addEventListener('change', () => {
-        urlDisplay.textContent = urlInput.value.trim() || p.base_url;
-      });
-    }
-
-    // Z.ai plan switch buttons
-    card.querySelectorAll('.zai-plan-btn').forEach(planBtn => {
-      planBtn.addEventListener('click', async () => {
-        const targetUrl = planBtn.getAttribute('data-url');
-        if (urlInput) urlInput.value = targetUrl;
-        if (urlDisplay) urlDisplay.textContent = targetUrl;
-        card.querySelectorAll('.zai-plan-btn').forEach(b => b.classList.remove('active'));
-        planBtn.classList.add('active');
-        await saveProviderData(p.id);
-        showToast(`Switched Z.ai to ${planBtn.textContent}!`, 'info');
-      });
+      fetchModelsForProvider(p.id);
     });
 
-    // Save helper
-    async function saveProviderData(provId) {
-      const u = urlInput ? urlInput.value.trim() : p.base_url;
-      const k = pwInput ? pwInput.value.trim() : (p.api_key || '');
-      try {
-        const res = await fetch('/api/providers', {
+    // Auto-save on blur
+    card.querySelectorAll('input').forEach(input => {
+      input.addEventListener('change', async () => {
+        const urlInput = card.querySelector('.prov-url-input').value.trim();
+        const keyInput = card.querySelector('.prov-key-input').value.trim();
+        await fetch('/api/providers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: provId, name: p.name, base_url: u, api_key: k })
+          body: JSON.stringify({ id: p.id, name: p.name, base_url: urlInput, api_key: keyInput })
         });
-        if (res.ok) {
-          if (provId === 'deepseek' && el.settingApiKey) {
-            el.settingApiKey.value = k;
-          }
-          const statusPill = card.querySelector('.prov-status-pill');
-          if (statusPill && !isLocal) {
-            if (k) {
-              statusPill.className = 'prov-status-pill configured';
-              statusPill.textContent = '✅ Key Saved';
-              card.classList.add('is-configured');
-            } else {
-              statusPill.className = 'prov-status-pill unconfigured';
-              statusPill.textContent = '⚠️ Key Needed';
-              card.classList.remove('is-configured');
-            }
-          }
-          const provInState = state.providers.find(x => x.id === provId);
-          if (provInState) {
-            provInState.base_url = u;
-            provInState.api_key = k;
-          }
-        }
-      } catch (err) {
-        console.error('Save provider error:', err);
-      }
-    }
-
-    // Save button
-    const saveKeyBtn = card.querySelector('.btn-save-prov-key');
-    if (saveKeyBtn) {
-      saveKeyBtn.addEventListener('click', async () => {
-        await saveProviderData(p.id);
-        showToast(`Saved ${meta.displayName} API Key!`, 'success');
       });
-    }
-
-    // Auto-save on blur / change
-    if (pwInput) {
-      pwInput.addEventListener('change', async () => {
-        await saveProviderData(p.id);
-      });
-    }
-    if (urlInput) {
-      urlInput.addEventListener('change', async () => {
-        await saveProviderData(p.id);
-      });
-    }
-
-    // Fetch models button
-    const fetchBtn = card.querySelector('.btn-fetch-prov');
-    if (fetchBtn) {
-      fetchBtn.addEventListener('click', async () => {
-        await saveProviderData(p.id);
-        fetchModelsForProvider(p.id);
-      });
-    }
+    });
 
     el.providersList.appendChild(card);
   });
@@ -1680,22 +1180,13 @@ function setPreset(key) {
   });
 
   const names = {
-    'r1-architect': 'Deep Architect',
-    'v3-coder': 'Fast Coder (V4.1)',
-    'bug-hunter': 'Bug Hunter',
-    'token-saver': 'Token Saver'
+    'r1-architect': '🧠 Deep Architect',
+    'v3-coder': '⚡ Fast Coder (V4.1)',
+    'bug-hunter': '🛡️ Bug & Audit Hunter',
+    'token-saver': '🪙 Token-Saver Minimalist'
   };
-  const icons = {
-    'r1-architect': '🧠',
-    'v3-coder': '⚡',
-    'bug-hunter': '🛡️',
-    'token-saver': '🪙'
-  };
-
-  if (el.personaBtnIcon) el.personaBtnIcon.textContent = icons[key] || '🧠';
-  if (el.personaBtnLabel) el.personaBtnLabel.textContent = names[key] || 'Deep Architect';
   if (el.activePersonaDisplay) {
-    el.activePersonaDisplay.textContent = (icons[key] || '') + ' ' + (names[key] || 'Custom');
+    el.activePersonaDisplay.textContent = names[key] || 'Custom';
   }
   // Note: We deliberately do NOT override the user's chosen model here.
   // The user's selection in the model dropdown is always respected 100%!
@@ -1802,25 +1293,15 @@ function renderSessionList(filter = '') {
       </div>
     `;
 
-    const delBtn = item.querySelector('.session-del-btn');
-    if (delBtn) {
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        deleteSessionImmediately(session.id);
-      };
-    }
-
-    const renameBtn = item.querySelector('.session-rename-btn');
-    if (renameBtn) {
-      renameBtn.addEventListener('click', (e) => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.session-rename-btn')) {
         e.stopPropagation();
         startRenamingSession(session.id);
-      });
-    }
-
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.session-rename-btn') || e.target.closest('.session-del-btn')) {
+        return;
+      }
+      if (e.target.closest('.session-del-btn')) {
+        e.stopPropagation();
+        deleteSessionById(session.id);
         return;
       }
       selectSession(session.id);
@@ -1850,20 +1331,19 @@ async function selectSession(sessionId) {
     const res = await fetch(`/api/sessions/${sessionId}`);
     if (!res.ok) return;
     const data = await res.json();
-    if (!data || !data.session) return;
     state.currentSession = data.session;
-    if (el.activeSessionTitle) el.activeSessionTitle.textContent = data.session.title || 'Conversation';
+    el.activeSessionTitle.textContent = data.session.title;
 
     if (data.session.model) {
       state.activeModel = data.session.model;
-      if (el.modelSelector) el.modelSelector.value = data.session.model;
+      el.modelSelector.value = data.session.model;
     }
     if (data.session.system_prompt) {
       state.systemPrompt = data.session.system_prompt.replace(/You are DeepSeek R1 acting as/gi, 'You are');
-      if (el.systemPromptInput) el.systemPromptInput.value = state.systemPrompt;
+      el.systemPromptInput.value = state.systemPrompt;
     }
 
-    renderMessages(data.messages || []);
+    renderMessages(data.messages);
     updateSessionTelemetry(data.session);
     updateModelRateBadge(state.activeModel);
 
@@ -1906,79 +1386,25 @@ async function createNewSession() {
   }
 }
 
-// ==========================================================================
-// Session Deletion Modal & Handlers
-// ==========================================================================
-
-let sessionPendingDeletion = null;
-
-function showDeleteSessionModal(sessionId) {
-  sessionPendingDeletion = sessionId || state.currentSessionId;
-  if (!sessionPendingDeletion) return;
-  const sess = state.sessions.find(s => s.id === sessionPendingDeletion);
-  const title = sess ? sess.title : 'this conversation';
-  if (el.deleteSessionModalTitle) {
-    el.deleteSessionModalTitle.textContent = `"${title}"`;
-  }
-  if (el.deleteSessionModal) {
-    el.deleteSessionModal.style.display = 'flex';
-  }
-}
-
-function hideDeleteSessionModal() {
-  sessionPendingDeletion = null;
-  if (el.deleteSessionModal) {
-    el.deleteSessionModal.style.display = 'none';
-  }
-}
-
-async function executeDeleteSession() {
-  const idToDelete = sessionPendingDeletion;
-  hideDeleteSessionModal();
-  if (idToDelete) {
-    await deleteSessionImmediately(idToDelete);
-  }
-}
-
-async function deleteSessionImmediately(sessionId) {
-  if (!sessionId) return;
-
-  const sess = state.sessions.find(s => s.id === sessionId);
-  const title = sess ? sess.title : 'Conversation';
-
-  // Optimistically remove from state and UI immediately for instant feedback
-  state.sessions = state.sessions.filter(s => s.id !== sessionId);
-  if (el.sessionCountBadge) el.sessionCountBadge.textContent = state.sessions.length;
-  renderSessionList();
-
-  // If this was the active session, switch to first remaining or create a new session
-  if (state.currentSessionId === sessionId) {
-    if (state.sessions.length > 0) {
-      selectSession(state.sessions[0].id);
-    } else {
-      createNewSession();
+async function deleteSessionById(sessionId) {
+  if (confirm('Delete this conversation? All messages will be permanently removed from SQLite.')) {
+    await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+    state.sessions = state.sessions.filter(s => s.id !== sessionId);
+    el.sessionCountBadge.textContent = state.sessions.length;
+    renderSessionList();
+    if (state.currentSessionId === sessionId) {
+      if (state.sessions.length > 0) {
+        selectSession(state.sessions[0].id);
+      } else {
+        createNewSession();
+      }
     }
   }
-
-  showToast(`Deleted "${title}"`, 'info');
-
-  try {
-    const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Server returned ' + res.status);
-  } catch (err) {
-    console.error('Delete error:', err);
-    showToast('Failed to delete on server: ' + err.message, 'error');
-    loadSessions();
-  }
-}
-
-async function deleteSessionById(sessionId) {
-  showDeleteSessionModal(sessionId);
 }
 
 async function deleteCurrentSession() {
   if (state.currentSessionId) {
-    showDeleteSessionModal(state.currentSessionId);
+    deleteSessionById(state.currentSessionId);
   }
 }
 
@@ -2300,25 +1726,16 @@ async function handleSendMessage() {
   const hasAttachment = Boolean(state.attachedImage);
   if ((!textContent && !hasAttachment) || state.isStreaming) return;
 
-  // Inject attached context files if any (@file tags)
-  let effectiveText = textContent;
-  if (state.attachedContextFiles && state.attachedContextFiles.length > 0) {
-    const contextPrefix = state.attachedContextFiles.map(f => `--- File Context: ${f.path} ---\n${f.content}\n--- End of ${f.path} ---`).join('\n\n');
-    effectiveText = `${contextPrefix}\n\nUser Question:\n${textContent}`;
-    state.attachedContextFiles = [];
-    renderContextTags();
-  }
-
   // Clear input and attachment
   let userPayload;
   if (hasAttachment) {
     userPayload = [
-      { type: 'text', text: effectiveText || 'Analyze this error screenshot and provide the diagnosis and fix.' },
+      { type: 'text', text: textContent || 'Analyze this error screenshot and provide the diagnosis and fix.' },
       { type: 'image_url', image_url: { url: state.attachedImage.dataUrl } }
     ];
     clearAttachedImage();
   } else {
-    userPayload = effectiveText;
+    userPayload = textContent;
   }
 
   el.promptTextarea.value = '';
@@ -2576,67 +1993,6 @@ function bindCodeBlockActions(container) {
     const saveBtn = block.querySelector('.save-btn');
     const codePre = block.querySelector('pre code');
     const langTag = block.querySelector('.code-lang-tag');
-
-    // Agentic 1-Click Apply to Workspace Button
-    let applyBtn = block.querySelector('.btn-apply-agent-code');
-    if (!applyBtn) {
-      applyBtn = document.createElement('button');
-      applyBtn.type = 'button';
-      applyBtn.className = 'btn-apply-agent-code';
-      const actionsWrapper = block.querySelector('.code-header-actions') || block;
-      actionsWrapper.insertBefore(applyBtn, actionsWrapper.firstChild);
-    }
-    if (!applyBtn.dataset.bound) {
-      applyBtn.dataset.bound = 'true';
-      const codeText = codePre ? codePre.textContent : '';
-      let detectedFilename = null;
-      const firstLines = codeText.split('\n').slice(0, 4);
-      for (const line of firstLines) {
-        const match = line.match(/(?:(?:filename|file|filepath):\s*|(?:\/\/|#|\/\*|<!--)\s*)([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)/i);
-        if (match && match[1]) {
-          detectedFilename = match[1].trim();
-          break;
-        }
-      }
-      const activePath = typeof state.studio.activeFile === 'string' ? state.studio.activeFile : state.studio.activeFile?.path;
-      const targetFilename = detectedFilename || activePath || null;
-
-      if (targetFilename) {
-        applyBtn.innerHTML = `<span>⚡ Apply to ${targetFilename.split('/').pop()}</span>`;
-        applyBtn.style.display = 'inline-flex';
-        applyBtn.addEventListener('click', async () => {
-          applyBtn.disabled = true;
-          applyBtn.innerHTML = `<span>⏳ Writing...</span>`;
-          try {
-            const res = await fetch('/api/workspace/file', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ path: targetFilename, content: codeText })
-            });
-            const data = await res.json();
-            if (data.success) {
-              applyBtn.innerHTML = `<span>✓ Applied!</span>`;
-              showToast(`⚡ Applied changes to ${targetFilename}!`, 'success');
-              if (activePath === targetFilename && el.studioCodeEditor) {
-                el.studioCodeEditor.value = codeText;
-              }
-              loadFileTree(state.studio.currentPath);
-              loadGitStatus();
-            } else {
-              applyBtn.disabled = false;
-              applyBtn.innerHTML = `<span>❌ Error</span>`;
-              showToast(data.error || 'Failed to apply', 'error');
-            }
-          } catch (err) {
-            applyBtn.disabled = false;
-            applyBtn.innerHTML = `<span>❌ Error</span>`;
-            showToast(err.message, 'error');
-          }
-        });
-      } else {
-        applyBtn.style.display = 'none';
-      }
-    }
 
     if (copyBtn && !copyBtn.dataset.bound) {
       copyBtn.dataset.bound = 'true';
@@ -3074,13 +2430,11 @@ function switchStudioTab(tab) {
   state.studio.activeTab = tab;
   if (el.studioTabBtnFiles) el.studioTabBtnFiles.classList.toggle('active', tab === 'files');
   if (el.studioTabBtnGit) el.studioTabBtnGit.classList.toggle('active', tab === 'git');
-  if (el.studioTabBtnTerminal) el.studioTabBtnTerminal.classList.toggle('active', tab === 'terminal');
   if (el.studioPanelFiles) el.studioPanelFiles.style.display = tab === 'files' ? 'flex' : 'none';
   if (el.studioPanelGit) el.studioPanelGit.style.display = tab === 'git' ? 'flex' : 'none';
-  if (el.studioPanelTerminal) el.studioPanelTerminal.style.display = tab === 'terminal' ? 'flex' : 'none';
   if (tab === 'git') {
     loadGitStatus();
-  } else if (tab === 'files') {
+  } else {
     loadFileTree(state.studio.currentPath);
   }
 }
@@ -3441,405 +2795,9 @@ function createNewFilePrompt() {
 
 function setStudioViewMode(mode) {
   state.studio.viewMode = mode;
-  if (el.svmEditorBtn) el.svmEditorBtn.classList.toggle('active', mode === 'editor');
-  if (el.svmSplitBtn) el.svmSplitBtn.classList.toggle('active', mode === 'split');
-  if (el.svmPreviewBtn) el.svmPreviewBtn.classList.toggle('active', mode === 'preview');
-  if (el.svmDiffBtn) el.svmDiffBtn.classList.toggle('active', mode === 'diff');
-
-  if (el.studioEditorArea) {
-    el.studioEditorArea.classList.toggle('split-mode', mode === 'split');
-  }
-
-  if (mode === 'editor') {
-    if (el.editorViewContainer) el.editorViewContainer.style.display = 'flex';
-    if (el.diffViewContainer) el.diffViewContainer.style.display = 'none';
-    if (el.previewViewContainer) el.previewViewContainer.style.display = 'none';
-  } else if (mode === 'preview') {
-    if (el.editorViewContainer) el.editorViewContainer.style.display = 'none';
-    if (el.diffViewContainer) el.diffViewContainer.style.display = 'none';
-    if (el.previewViewContainer) el.previewViewContainer.style.display = 'flex';
-    reloadPreview();
-  } else if (mode === 'split') {
-    if (el.editorViewContainer) el.editorViewContainer.style.display = 'flex';
-    if (el.diffViewContainer) el.diffViewContainer.style.display = 'none';
-    if (el.previewViewContainer) el.previewViewContainer.style.display = 'flex';
-    reloadPreview();
-  } else if (mode === 'diff') {
-    if (el.editorViewContainer) el.editorViewContainer.style.display = 'none';
-    if (el.diffViewContainer) el.diffViewContainer.style.display = 'flex';
-    if (el.previewViewContainer) el.previewViewContainer.style.display = 'none';
-  }
-}
-
-function reloadPreview() {
-  if (!el.studioPreviewIframe) return;
-  let targetUrl = el.previewUrlInput?.value?.trim() || '/api/workspace/preview/';
-  if (!targetUrl.startsWith('http') && !targetUrl.startsWith('/')) {
-    targetUrl = 'http://' + targetUrl;
-  }
-  el.studioPreviewIframe.src = targetUrl;
-}
-
-function setPreviewDevice(device) {
-  if (!el.previewFrameWrapper) return;
-  el.previewDeviceDesktop?.classList.toggle('active', device === 'desktop');
-  el.previewDeviceTablet?.classList.toggle('active', device === 'tablet');
-  el.previewDeviceMobile?.classList.toggle('active', device === 'mobile');
-  el.previewFrameWrapper.className = `preview-frame-wrapper ${device === 'desktop' ? '' : device}`;
-}
-
-function openPreviewExternal() {
-  let targetUrl = el.previewUrlInput?.value?.trim() || '/api/workspace/preview/';
-  if (targetUrl.startsWith('/')) {
-    targetUrl = window.location.origin + targetUrl;
-  } else if (!targetUrl.startsWith('http')) {
-    targetUrl = 'http://' + targetUrl;
-  }
-  window.open(targetUrl, '_blank');
-}
-
-// Integrated Terminal Runner & Autonomous Fixer
-async function runTerminalCommand(cmd) {
-  if (!cmd || !cmd.trim()) return;
-  switchStudioTab('terminal');
-
-  if (el.btnKillProcess) el.btnKillProcess.disabled = false;
-  if (el.studioTermBadge) el.studioTermBadge.style.display = 'inline';
-  if (el.terminalAutoFixBanner) el.terminalAutoFixBanner.style.display = 'none';
-
-  if (state.terminal.eventSource) {
-    state.terminal.eventSource.close();
-    state.terminal.eventSource = null;
-  }
-
-  appendTerminalLog('info', `\n$ ${cmd}\n`);
-
-  try {
-    const res = await fetch('/api/terminal/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command: cmd })
-    });
-    const data = await res.json();
-    if (!data.id) {
-      appendTerminalLog('error', `Failed to start process: ${data.error || 'Unknown error'}\n`);
-      if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-      if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-      return;
-    }
-
-    state.terminal.currentId = data.id;
-    state.terminal.isRunning = true;
-    state.terminal.lastCommand = cmd;
-    state.terminal.lastError = '';
-
-    const evtSource = new EventSource(`/api/terminal/stream?id=${data.id}`);
-    state.terminal.eventSource = evtSource;
-
-    evtSource.onmessage = (event) => {
-      try {
-        const item = JSON.parse(event.data);
-        appendTerminalLog(item.type, item.text);
-
-        if (item.type === 'stderr') {
-          state.terminal.lastError += item.text;
-        }
-
-        if (item.text.includes('Process finished (code 0)')) {
-          state.terminal.isRunning = false;
-          if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-          if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-          evtSource.close();
-        } else if (item.text.includes('Process exited with code')) {
-          state.terminal.isRunning = false;
-          if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-          if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-          evtSource.close();
-          showTerminalAutoFixBanner(state.terminal.lastError || item.text);
-        }
-      } catch (e) {}
-    };
-
-    evtSource.onerror = () => {
-      evtSource.close();
-      if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-      if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-    };
-
-  } catch (err) {
-    appendTerminalLog('error', `Execution error: ${err.message}\n`);
-    if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-    if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-  }
-}
-
-function appendTerminalLog(type, text) {
-  if (!el.terminalConsole) return;
-  const span = document.createElement('span');
-  span.className = `terminal-log-line ${type}`;
-  span.textContent = text;
-  el.terminalConsole.appendChild(span);
-  el.terminalConsole.scrollTop = el.terminalConsole.scrollHeight;
-}
-
-function clearTerminalConsole() {
-  if (el.terminalConsole) {
-    el.terminalConsole.innerHTML = '<div class="terminal-log-line info">Console cleared.</div>';
-  }
-  if (el.terminalAutoFixBanner) el.terminalAutoFixBanner.style.display = 'none';
-}
-
-async function killTerminalProcess() {
-  if (!state.terminal.currentId) return;
-  try {
-    await fetch('/api/terminal/kill', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: state.terminal.currentId })
-    });
-    appendTerminalLog('info', '\n⏹ Process termination requested.\n');
-    if (el.btnKillProcess) el.btnKillProcess.disabled = true;
-    if (el.studioTermBadge) el.studioTermBadge.style.display = 'none';
-  } catch (e) {}
-}
-
-function handleTerminalInputSubmit() {
-  const cmd = el.terminalInputCmd?.value?.trim();
-  if (!cmd) return;
-  el.terminalInputCmd.value = '';
-  runTerminalCommand(cmd);
-}
-
-function handleQuickDevServer() {
-  fetch('/api/workspace/file?path=package.json').then(res => {
-    if (res.ok) {
-      runTerminalCommand('npm run dev || npm start');
-    } else {
-      fetch('/api/workspace/file?path=main.py').then(pyRes => {
-        if (pyRes.ok) {
-          runTerminalCommand('python3 main.py');
-        } else {
-          setStudioViewMode('split');
-          showToast('Live static preview opened in Studio', 'info');
-        }
-      });
-    }
-  }).catch(() => {
-    setStudioViewMode('split');
-  });
-}
-
-function showTerminalAutoFixBanner(errorSnippet) {
-  if (!el.terminalAutoFixBanner) return;
-  if (el.terminalErrorSnippet) {
-    const lines = (errorSnippet || 'Process exited with error').trim().split('\n').filter(Boolean);
-    el.terminalErrorSnippet.textContent = (lines[lines.length - 1] || 'Process exited with errors').slice(0, 90);
-  }
-  el.terminalAutoFixBanner.style.display = 'flex';
-}
-
-function handleTerminalAutoFix() {
-  const errorText = state.terminal.lastError || 'Command failed with error';
-  const lastCmd = state.terminal.lastCommand || 'process';
-
-  closeStudio();
-
-  const prompt = `I ran the command:
-\`\`\`bash
-${lastCmd}
-\`\`\`
-It failed with the following error output:
-\`\`\`
-${errorText.slice(-1500)}
-\`\`\`
-
-Please analyze the root cause and provide the exact fixed files in standard format (e.g. "// File: path/to/file") so I can apply them with one click.`;
-
-  if (el.promptTextarea) {
-    el.promptTextarea.value = prompt;
-    adjustTextareaHeight(el.promptTextarea);
-    el.promptTextarea.focus();
-    showToast('🤖 Error context loaded! Press ⌘+Enter to send to DeepSeek.', 'info');
-  }
-}
-
-// @File Context Tagging System
-async function loadWorkspaceFilesList() {
-  try {
-    const res = await fetch('/api/workspace/files-list');
-    const data = await res.json();
-    state.cachedFilesList = data.files || [];
-  } catch (e) {}
-}
-
-function openFileAutocomplete(query = '') {
-  if (!state.cachedFilesList || state.cachedFilesList.length === 0) {
-    loadWorkspaceFilesList().then(() => renderFileAutocomplete(query));
-  } else {
-    renderFileAutocomplete(query);
-  }
-}
-
-function renderFileAutocomplete(query = '') {
-  if (!el.fileAutocompleteDropdown || !el.fadList) return;
-  const q = query.toLowerCase().replace(/^@/, '');
-  const matches = (state.cachedFilesList || [])
-    .filter(f => !f.isDirectory && (!q || f.path.toLowerCase().includes(q)))
-    .slice(0, 15);
-
-  el.fadList.innerHTML = '';
-  if (matches.length === 0) {
-    el.fadList.innerHTML = '<div style="padding: 10px; font-size: 11px; color: var(--text-dim); text-align: center;">No matching files in workspace</div>';
-  } else {
-    matches.forEach((f, idx) => {
-      const item = document.createElement('div');
-      item.className = `fad-item ${idx === 0 ? 'active' : ''}`;
-      item.dataset.path = f.path;
-      item.dataset.name = f.name;
-      item.innerHTML = `
-        <span class="fad-item-icon">📄</span>
-        <span class="fad-item-name">${f.name}</span>
-        <span class="fad-item-path">${f.path}</span>
-      `;
-      item.addEventListener('click', () => {
-        attachFileContext(f.path, f.name);
-        closeFileAutocomplete();
-        if (el.promptTextarea) {
-          // Replace trailing @query with empty or tag
-          el.promptTextarea.value = el.promptTextarea.value.replace(/@[a-zA-Z0-9._/-]*$/, '').trim() + ' ';
-          el.promptTextarea.focus();
-        }
-      });
-      el.fadList.appendChild(item);
-    });
-  }
-
-  el.fileAutocompleteDropdown.style.display = 'block';
-}
-
-function closeFileAutocomplete() {
-  if (el.fileAutocompleteDropdown) el.fileAutocompleteDropdown.style.display = 'none';
-}
-
-async function attachFileContext(filePath, fileName = '') {
-  const name = fileName || filePath.split('/').pop();
-  if (state.attachedContextFiles.some(f => f.path === filePath)) return;
-
-  try {
-    const res = await fetch(`/api/workspace/file?path=${encodeURIComponent(filePath)}`);
-    const data = await res.json();
-    if (data.content !== undefined) {
-      state.attachedContextFiles.push({
-        name,
-        path: filePath,
-        content: data.content
-      });
-      renderContextTags();
-      showToast(`📎 Attached @${name} to prompt context`, 'info');
-    }
-  } catch (e) {
-    showToast(`Failed to read file ${name}`, 'error');
-  }
-}
-
-function removeContextFile(filePath) {
-  state.attachedContextFiles = state.attachedContextFiles.filter(f => f.path !== filePath);
-  renderContextTags();
-}
-
-function renderContextTags() {
-  if (!el.contextTagsContainer) return;
-  el.contextTagsContainer.innerHTML = '';
-  if (state.attachedContextFiles.length === 0) {
-    el.contextTagsContainer.style.display = 'none';
-    return;
-  }
-  el.contextTagsContainer.style.display = 'flex';
-  state.attachedContextFiles.forEach(f => {
-    const chip = document.createElement('div');
-    chip.className = 'context-tag-chip';
-    chip.innerHTML = `<span>📄 @${f.name}</span><span class="ctc-remove" title="Remove attachment">✕</span>`;
-    chip.querySelector('.ctc-remove').addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeContextFile(f.path);
-    });
-    el.contextTagsContainer.appendChild(chip);
-  });
-}
-
-// Agentic Multi-File Diff Applier on Chat Responses
-function enhanceCodeBlocksWithApplyButtons(container = el.messagesContainer) {
-  if (!container) return;
-  const codeBlocks = container.querySelectorAll('pre');
-  codeBlocks.forEach(pre => {
-    if (pre.dataset.hasApplyBtn) return;
-
-    const code = pre.querySelector('code');
-    if (!code) return;
-    const text = code.innerText || '';
-
-    // Detect target file comment
-    const fileMatch = text.match(/(?:\/\/|\/\*|#|<!--)\s*(?:File|filepath|Filename):\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)/i);
-    if (!fileMatch) return;
-
-    pre.dataset.hasApplyBtn = 'true';
-    const targetFilePath = fileMatch[1].trim();
-
-    let header = pre.querySelector('.code-block-header');
-    if (!header) {
-      header = document.createElement('div');
-      header.className = 'code-block-header';
-      header.style.display = 'flex';
-      header.style.justifyContent = 'flex-end';
-      header.style.padding = '4px 8px';
-      header.style.borderBottom = '1px solid var(--border-subtle)';
-      pre.insertBefore(header, pre.firstChild);
-    }
-
-    const applyBtn = document.createElement('button');
-    applyBtn.type = 'button';
-    applyBtn.className = 'btn-apply-agent-code';
-    applyBtn.innerHTML = `<span>⚡ Apply to ${targetFilePath.split('/').pop()}</span>`;
-    applyBtn.title = `Apply this code block directly to ${targetFilePath} in your workspace`;
-
-    applyBtn.addEventListener('click', async () => {
-      applyBtn.disabled = true;
-      applyBtn.innerHTML = `<span>⏳ Applying...</span>`;
-
-      try {
-        const res = await fetch('/api/workspace/file', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            path: targetFilePath,
-            content: text
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          applyBtn.innerHTML = `<span>✓ Applied!</span>`;
-          applyBtn.style.borderColor = '#10b981';
-          applyBtn.style.color = '#10b981';
-          showToast(`⚡ Applied changes to ${targetFilePath}!`, 'success');
-          if (state.studio.activeFile === targetFilePath && el.studioCodeEditor) {
-            el.studioCodeEditor.value = text;
-          }
-          loadFileTree(state.studio.currentPath);
-          loadGitStatus();
-        } else {
-          applyBtn.disabled = false;
-          applyBtn.innerHTML = `<span>❌ Error</span>`;
-          showToast(data.error || 'Failed to apply file', 'error');
-        }
-      } catch (err) {
-        applyBtn.disabled = false;
-        applyBtn.innerHTML = `<span>❌ Error</span>`;
-        showToast(err.message, 'error');
-      }
-    });
-
-    header.appendChild(applyBtn);
-  });
+  if (el.editorViewContainer) el.editorViewContainer.style.display = mode === 'editor' ? 'flex' : 'none';
+  if (el.diffViewContainer) el.diffViewContainer.style.display = mode === 'diff' ? 'flex' : 'none';
+  if (el.diffBtnLabel) el.diffBtnLabel.textContent = mode === 'editor' ? 'Diff' : 'Editor';
 }
 
 function openDiffViewer(filePath, diffText) {
@@ -3939,15 +2897,9 @@ async function loadGitStatus() {
           const item = document.createElement('div');
           item.className = 'git-change-item';
           const badgeClass = f.status.includes('?') ? 'untracked' : f.status;
-          const parts = f.path.split('/');
-          const fileName = parts.pop() || f.path;
-          const dirPath = parts.length > 0 ? parts.join('/') + '/' : '';
-          item.title = f.path;
           item.innerHTML = `
             <span class="git-badge ${badgeClass}">${escapeHtml(f.status)}</span>
-            <span class="gci-path" title="${escapeHtml(f.path)}">
-              <span class="gci-dir">${escapeHtml(dirPath)}</span><span class="gci-name">${escapeHtml(fileName)}</span>
-            </span>
+            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(f.path)}</span>
           `;
           item.addEventListener('click', async () => {
             // Load file directly in the editor for instant viewing and editing
@@ -4303,6 +3255,7 @@ function showGhSignInNotice(msg, type) {
 }
 
 async function submitGhSignOut() {
+  if (!confirm('Are you sure you want to disconnect this GitHub account from DeepHarness?')) return;
   try {
     await fetch('/api/github/logout', { method: 'POST' });
     showToast('GitHub account disconnected.', 'info');
@@ -4597,8 +3550,6 @@ async function submitPR(title, body, head, owner, repo) {
     if (data.success) {
       showToast(`Pull Request #${data.number} created!`, 'success');
       if (el.gitPrResultNotice) {
-        const prDetails = document.getElementById('gitPrDetails');
-        if (prDetails) prDetails.open = true;
         el.gitPrResultNotice.style.display = 'block';
         el.gitPrResultNotice.innerHTML = `
           🎉 PR #${data.number} Created! <a href="${data.prUrl}" target="_blank" style="color: #38bdf8; text-decoration: underline;">View on GitHub ↗</a>

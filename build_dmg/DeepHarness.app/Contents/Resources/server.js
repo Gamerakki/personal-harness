@@ -16,9 +16,6 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(EXPORT_DIR)) fs.mkdirSync(EXPORT_DIR, { recursive: true });
 
-let globalPreviewTimestamp = Date.now();
-const terminalSessions = new Map();
-
 // Initialize SQLite database
 const dbPath = path.join(DATA_DIR, 'harness.db');
 const db = new DatabaseSync(dbPath);
@@ -97,85 +94,33 @@ try {
   db.exec('ALTER TABLE messages ADD COLUMN model TEXT;');
 } catch (_) {}
 
-// Seed & Ensure Default Providers and Models (DeepSeek, OpenRouter, Z.ai, OpenAI, Groq, Ollama)
-const DEFAULT_PROVIDERS = [
-  {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    base_url: 'https://api.deepseek.com',
-    models: [
-      { id: 'deepseek-reasoner', name: 'deepseek-reasoner (R1 Thinking)' },
-      { id: 'deepseek-chat', name: 'deepseek-chat (V4.1 Coder)' }
-    ]
-  },
-  {
-    id: 'openrouter',
-    name: 'OpenRouter',
-    base_url: 'https://openrouter.ai/api/v1',
-    models: [
-      { id: 'deepseek/deepseek-r1', name: 'OpenRouter: DeepSeek R1' },
-      { id: 'deepseek/deepseek-chat', name: 'OpenRouter: DeepSeek V3' },
-      { id: 'anthropic/claude-3.5-sonnet', name: 'OpenRouter: Claude 3.5 Sonnet' },
-      { id: 'openai/gpt-4o', name: 'OpenRouter: OpenAI GPT-4o' },
-      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'OpenRouter: Llama 3.3 70B' }
-    ]
-  },
-  {
-    id: 'zai',
-    name: 'Z.ai (GLM)',
-    base_url: 'https://api.z.ai/api/paas/v4',
-    models: [
-      { id: 'glm-4-plus', name: 'Z.ai: GLM-4-Plus (Flagship)' },
-      { id: 'glm-4-flash', name: 'Z.ai: GLM-4-Flash (Fast & Free)' },
-      { id: 'glm-4-long', name: 'Z.ai: GLM-4-Long (1M Context)' },
-      { id: 'codegeex-4', name: 'Z.ai: CodeGeeX-4 (Coding Expert)' }
-    ]
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    base_url: 'https://api.openai.com/v1',
-    models: [
-      { id: 'gpt-4o', name: 'OpenAI: GPT-4o' },
-      { id: 'gpt-4o-mini', name: 'OpenAI: GPT-4o-mini' },
-      { id: 'o1-preview', name: 'OpenAI: o1 Reasoning' },
-      { id: 'o3-mini', name: 'OpenAI: o3-mini' }
-    ]
-  },
-  {
-    id: 'groq',
-    name: 'Groq',
-    base_url: 'https://api.groq.com/openai/v1',
-    models: [
-      { id: 'llama-3.3-70b-versatile', name: 'Groq: Llama 3.3 70B' },
-      { id: 'deepseek-r1-distill-llama-70b', name: 'Groq: DeepSeek R1 Distill 70B' }
-    ]
-  },
-  {
-    id: 'ollama',
-    name: 'Ollama (Local)',
-    base_url: 'http://localhost:11434/v1',
-    models: []
-  }
-];
+// Seed Default Providers if empty
+const providerCount = db.prepare('SELECT COUNT(*) as count FROM providers').get().count;
+if (providerCount === 0) {
+  const now = Date.now();
+  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'deepseek', 'DeepSeek', 'https://api.deepseek.com', getSetting('deepseek_api_key', ''), now
+  );
+  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'openai', 'OpenAI', 'https://api.openai.com/v1', '', now
+  );
+  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', '', now
+  );
+  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'groq', 'Groq', 'https://api.groq.com/openai/v1', '', now
+  );
+  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'ollama', 'Ollama (Local)', 'http://localhost:11434/v1', '', now
+  );
 
-const seedNow = Date.now();
-for (const dp of DEFAULT_PROVIDERS) {
-  const existing = db.prepare('SELECT id, base_url, api_key FROM providers WHERE id = ?').get(dp.id);
-  if (!existing) {
-    const initKey = dp.id === 'deepseek' ? getSetting('deepseek_api_key', '') : '';
-    db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      dp.id, dp.name, dp.base_url, initKey, seedNow
-    );
-  } else if (!existing.base_url) {
-    db.prepare('UPDATE providers SET base_url = ? WHERE id = ?').run(dp.base_url, dp.id);
-  }
-
-  for (const m of dp.models) {
-    db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
-      m.id, dp.id, m.name, seedNow
-    );
-  }
+  // Seed default DeepSeek models
+  db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
+    'deepseek-reasoner', 'deepseek', 'deepseek-reasoner (R1 Thinking)', now
+  );
+  db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
+    'deepseek-chat', 'deepseek', 'deepseek-chat (V4.1 Coder)', now
+  );
 }
 
 // Model Pricing Registry (Per 1 Million Tokens)
@@ -370,8 +315,7 @@ const server = http.createServer(async (req, res) => {
             headers: {
               'Authorization': `Bearer ${apiKey}`,
               'Accept': 'application/json'
-            },
-            signal: AbortSignal.timeout(6000)
+            }
           });
 
           if (!balanceRes.ok) {
@@ -1044,262 +988,6 @@ if __name__ == "__main__":
         return sendJson(res, 200, { success: true, path: reqPath });
       }
 
-      // Fast recursive file scanner for @file context autocomplete
-      if (pathname === '/api/workspace/files-list' && method === 'GET') {
-        const root = getWorkspaceRoot();
-        const files = [];
-        const ignored = new Set(['.git', 'node_modules', 'dist', '.DS_Store', '.system_generated', '.gemini', '__pycache__', '.venv', '.turbo', '.next']);
-
-        function walk(dir, rel = '') {
-          if (files.length >= 2000) return;
-          try {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-              if (ignored.has(entry.name)) continue;
-              const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
-              const fullPath = path.join(dir, entry.name);
-              if (entry.isDirectory()) {
-                files.push({ name: entry.name, path: entryRel, isDirectory: true });
-                walk(fullPath, entryRel);
-              } else {
-                let size = 0;
-                try { size = fs.statSync(fullPath).size; } catch (e) {}
-                files.push({ name: entry.name, path: entryRel, isDirectory: false, size });
-              }
-            }
-          } catch (e) {}
-        }
-
-        walk(root);
-        return sendJson(res, 200, { root, files });
-      }
-
-      // Multi-file agentic applier
-      if (pathname === '/api/workspace/apply-files' && method === 'POST') {
-        const root = getWorkspaceRoot();
-        const body = await parseJsonBody(req);
-        const { files = [] } = body;
-        if (!Array.isArray(files) || files.length === 0) {
-          return sendJson(res, 400, { error: 'Files array required' });
-        }
-
-        const modified = [];
-        for (const item of files) {
-          if (!item.path || item.content === undefined) continue;
-          const fullPath = path.resolve(root, item.path);
-          if (!fullPath.startsWith(root)) continue;
-
-          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-          fs.writeFileSync(fullPath, item.content, 'utf-8');
-          modified.push(item.path);
-        }
-
-        globalPreviewTimestamp = Date.now();
-        return sendJson(res, 200, { success: true, count: modified.length, files: modified });
-      }
-
-      // In-Studio Live Preview Server
-      if (pathname.startsWith('/api/workspace/preview')) {
-        const root = getWorkspaceRoot();
-        let subPath = decodeURIComponent(pathname.replace(/^\/api\/workspace\/preview\/?/, ''));
-        if (!subPath || subPath === '') subPath = 'index.html';
-        const targetFile = path.resolve(root, subPath);
-
-        if (!targetFile.startsWith(root)) {
-          res.writeHead(403, { 'Content-Type': 'text/plain' });
-          return res.end('Access denied: Path outside workspace');
-        }
-
-        let finalPath = targetFile;
-        if (fs.existsSync(targetFile) && fs.statSync(targetFile).isDirectory()) {
-          finalPath = path.join(targetFile, 'index.html');
-        }
-
-        if (fs.existsSync(finalPath) && fs.statSync(finalPath).isFile()) {
-          const ext = path.extname(finalPath).toLowerCase();
-          const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-          if (ext === '.html') {
-            let html = fs.readFileSync(finalPath, 'utf-8');
-            const liveScript = `
-<script>
-(function() {
-  let lastCheck = ${globalPreviewTimestamp};
-  setInterval(async () => {
-    try {
-      const res = await fetch('/api/workspace/preview-timestamp');
-      const data = await res.json();
-      if (data.timestamp > lastCheck) {
-        lastCheck = data.timestamp;
-        window.location.reload();
-      }
-    } catch(e) {}
-  }, 1000);
-})();
-</script>`;
-            html = html.includes('</body>') ? html.replace('</body>', `${liveScript}</body>`) : html + liveScript;
-            res.writeHead(200, {
-              'Content-Type': 'text/html; charset=utf-8',
-              'Cache-Control': 'no-cache, no-store, must-revalidate'
-            });
-            return res.end(html);
-          }
-
-          res.writeHead(200, {
-            'Content-Type': contentType,
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
-          });
-          return fs.createReadStream(finalPath).pipe(res);
-        } else {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          return res.end(`
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset="utf-8"><style>body{background:#0b0f19;color:#94a3b8;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}h2{color:#f8fafc;margin-bottom:8px;font-size:18px;}p{font-size:13px;color:#64748b;max-width:360px;line-height:1.5;}code{background:#1e293b;color:#38bdf8;padding:2px 6px;border-radius:4px;}</style></head>
-            <body>
-              <div>
-                <h2>No Static HTML Entry Found</h2>
-                <p>Create an <code>index.html</code> in this project folder, or run a dev server (e.g. <code>http://localhost:5173</code>) and enter the URL in the address bar above.</p>
-              </div>
-            </body>
-            </html>
-          `);
-        }
-      }
-
-      if (pathname === '/api/workspace/preview-timestamp' && method === 'GET') {
-        return sendJson(res, 200, { timestamp: globalPreviewTimestamp });
-      }
-
-      // 4b-iii. Integrated Terminal & Command Runner
-      if (pathname === '/api/terminal/run' && method === 'POST') {
-        const root = getWorkspaceRoot();
-        const body = await parseJsonBody(req);
-        const { command } = body;
-        if (!command || !command.trim()) {
-          return sendJson(res, 400, { error: 'Command required' });
-        }
-
-        const id = crypto.randomUUID();
-        const cleanCmd = command.trim();
-
-        const proc = require('node:child_process').spawn('/bin/zsh', ['-l', '-c', cleanCmd], {
-          cwd: root,
-          env: {
-            ...process.env,
-            PATH: `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:${process.env.PATH || ''}`,
-            FORCE_COLOR: '1'
-          }
-        });
-
-        const session = {
-          id,
-          command: cleanCmd,
-          process: proc,
-          buffer: [],
-          isRunning: true,
-          exitCode: null,
-          errorOutput: '',
-          listeners: new Set(),
-          startTime: Date.now()
-        };
-
-        const appendLog = (type, text) => {
-          const entry = { type, text, time: Date.now() };
-          session.buffer.push(entry);
-          if (session.buffer.length > 2000) session.buffer.shift();
-          if (type === 'stderr') session.errorOutput += text;
-          for (const listener of session.listeners) {
-            try { listener(entry); } catch (e) {}
-          }
-        };
-
-        appendLog('info', `▶ [Terminal] ${cleanCmd}\n`);
-
-        proc.stdout.on('data', (chunk) => appendLog('stdout', chunk.toString('utf-8')));
-        proc.stderr.on('data', (chunk) => appendLog('stderr', chunk.toString('utf-8')));
-
-        proc.on('close', (code) => {
-          session.isRunning = false;
-          session.exitCode = code;
-          if (code === 0) {
-            appendLog('info', `\n✓ Process finished (code 0)\n`);
-          } else {
-            appendLog('error', `\n✗ Process exited with code ${code}\n`);
-          }
-        });
-
-        proc.on('error', (err) => {
-          session.isRunning = false;
-          appendLog('error', `\n✗ Process error: ${err.message}\n`);
-        });
-
-        terminalSessions.set(id, session);
-        return sendJson(res, 200, { id, command: cleanCmd, isRunning: true });
-      }
-
-      if (pathname === '/api/terminal/stream' && method === 'GET') {
-        const id = parsedUrl.searchParams.get('id');
-        const session = terminalSessions.get(id);
-        if (!session) {
-          return sendJson(res, 404, { error: 'Terminal session not found' });
-        }
-
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        });
-
-        // Send existing buffer
-        for (const entry of session.buffer) {
-          res.write(`data: ${JSON.stringify(entry)}\n\n`);
-        }
-
-        const listener = (entry) => {
-          res.write(`data: ${JSON.stringify(entry)}\n\n`);
-        };
-
-        session.listeners.add(listener);
-
-        req.on('close', () => {
-          session.listeners.delete(listener);
-        });
-        return;
-      }
-
-      if (pathname === '/api/terminal/kill' && method === 'POST') {
-        const body = await parseJsonBody(req);
-        const { id } = body;
-        const session = terminalSessions.get(id);
-        if (session && session.isRunning && session.process) {
-          try {
-            session.process.kill('SIGTERM');
-            setTimeout(() => {
-              if (session.isRunning) {
-                try { session.process.kill('SIGKILL'); } catch (e) {}
-              }
-            }, 1000);
-          } catch (e) {}
-          return sendJson(res, 200, { success: true });
-        }
-        return sendJson(res, 200, { success: true, message: 'Process not running' });
-      }
-
-      if (pathname === '/api/terminal/status' && method === 'GET') {
-        const id = parsedUrl.searchParams.get('id');
-        const session = terminalSessions.get(id);
-        if (!session) return sendJson(res, 404, { error: 'Session not found' });
-        return sendJson(res, 200, {
-          id: session.id,
-          command: session.command,
-          isRunning: session.isRunning,
-          exitCode: session.exitCode,
-          hasError: session.exitCode !== null && session.exitCode !== 0,
-          errorOutput: session.errorOutput.slice(-3000)
-        });
-      }
-
       // 4c. Git & GitHub Operations
       if (pathname === '/api/git/status' && method === 'GET') {
         const root = getWorkspaceRoot();
@@ -1881,16 +1569,8 @@ if __name__ == "__main__":
           if (apiKey) {
             headers['Authorization'] = `Bearer ${apiKey}`;
           }
-          if (providerId === 'openrouter') {
-            headers['HTTP-Referer'] = 'https://github.com/deepharness';
-            headers['X-Title'] = 'DeepHarness';
-          }
 
-          const fetchRes = await fetch(modelsUrl, {
-            method: 'GET',
-            headers,
-            signal: AbortSignal.timeout(12000)
-          });
+          const fetchRes = await fetch(modelsUrl, { method: 'GET', headers });
           if (!fetchRes.ok) {
             const errText = await fetchRes.text();
             return sendJson(res, fetchRes.status, {
@@ -1903,11 +1583,11 @@ if __name__ == "__main__":
           let rawModels = [];
 
           if (Array.isArray(data.data)) {
-            rawModels = data.data.map(m => ({ id: m.id || m.name, name: m.name || m.id }));
+            rawModels = data.data.map(m => m.id);
           } else if (Array.isArray(data.models)) {
-            rawModels = data.models.map(m => ({ id: m.name || m.model || m.id, name: m.name || m.id }));
+            rawModels = data.models.map(m => m.name || m.model);
           } else if (Array.isArray(data)) {
-            rawModels = data.map(m => ({ id: typeof m === 'string' ? m : (m.id || m.name), name: typeof m === 'string' ? m : (m.name || m.id) }));
+            rawModels = data.map(m => typeof m === 'string' ? m : (m.id || m.name));
           }
 
           if (rawModels.length === 0) {
@@ -1916,9 +1596,9 @@ if __name__ == "__main__":
 
           const insertStmt = db.prepare('INSERT OR REPLACE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)');
           const now = Date.now();
-          for (const m of rawModels) {
-            if (m.id) {
-              insertStmt.run(String(m.id), providerId, String(m.name || m.id), now);
+          for (const modelId of rawModels) {
+            if (modelId) {
+              insertStmt.run(String(modelId), providerId, String(modelId), now);
             }
           }
 
@@ -1973,8 +1653,6 @@ if __name__ == "__main__":
           providerId = 'openai';
         } else if (model.includes('/')) {
           providerId = 'openrouter';
-        } else if (model.startsWith('glm') || model.startsWith('codegeex') || model.startsWith('charglm')) {
-          providerId = 'zai';
         }
 
         const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
@@ -2076,10 +1754,6 @@ if __name__ == "__main__":
           };
           if (apiKey) {
             reqHeaders['Authorization'] = `Bearer ${apiKey}`;
-          }
-          if (providerId === 'openrouter') {
-            reqHeaders['HTTP-Referer'] = 'https://github.com/deepharness';
-            reqHeaders['X-Title'] = 'DeepHarness';
           }
 
           // Send request to LLM Chat Completions

@@ -16,6 +16,9 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(EXPORT_DIR)) fs.mkdirSync(EXPORT_DIR, { recursive: true });
 
+let globalPreviewTimestamp = Date.now();
+const terminalSessions = new Map();
+
 // Initialize SQLite database
 const dbPath = path.join(DATA_DIR, 'harness.db');
 const db = new DatabaseSync(dbPath);
@@ -94,33 +97,85 @@ try {
   db.exec('ALTER TABLE messages ADD COLUMN model TEXT;');
 } catch (_) {}
 
-// Seed Default Providers if empty
-const providerCount = db.prepare('SELECT COUNT(*) as count FROM providers').get().count;
-if (providerCount === 0) {
-  const now = Date.now();
-  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    'deepseek', 'DeepSeek', 'https://api.deepseek.com', getSetting('deepseek_api_key', ''), now
-  );
-  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    'openai', 'OpenAI', 'https://api.openai.com/v1', '', now
-  );
-  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    'openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', '', now
-  );
-  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    'groq', 'Groq', 'https://api.groq.com/openai/v1', '', now
-  );
-  db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    'ollama', 'Ollama (Local)', 'http://localhost:11434/v1', '', now
-  );
+// Seed & Ensure Default Providers and Models (DeepSeek, OpenRouter, Z.ai, OpenAI, Groq, Ollama)
+const DEFAULT_PROVIDERS = [
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    base_url: 'https://api.deepseek.com',
+    models: [
+      { id: 'deepseek-reasoner', name: 'deepseek-reasoner (R1 Thinking)' },
+      { id: 'deepseek-chat', name: 'deepseek-chat (V4.1 Coder)' }
+    ]
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    base_url: 'https://openrouter.ai/api/v1',
+    models: [
+      { id: 'deepseek/deepseek-r1', name: 'OpenRouter: DeepSeek R1' },
+      { id: 'deepseek/deepseek-chat', name: 'OpenRouter: DeepSeek V3' },
+      { id: 'anthropic/claude-3.5-sonnet', name: 'OpenRouter: Claude 3.5 Sonnet' },
+      { id: 'openai/gpt-4o', name: 'OpenRouter: OpenAI GPT-4o' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'OpenRouter: Llama 3.3 70B' }
+    ]
+  },
+  {
+    id: 'zai',
+    name: 'Z.ai (GLM)',
+    base_url: 'https://api.z.ai/api/paas/v4',
+    models: [
+      { id: 'glm-4-plus', name: 'Z.ai: GLM-4-Plus (Flagship)' },
+      { id: 'glm-4-flash', name: 'Z.ai: GLM-4-Flash (Fast & Free)' },
+      { id: 'glm-4-long', name: 'Z.ai: GLM-4-Long (1M Context)' },
+      { id: 'codegeex-4', name: 'Z.ai: CodeGeeX-4 (Coding Expert)' }
+    ]
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    base_url: 'https://api.openai.com/v1',
+    models: [
+      { id: 'gpt-4o', name: 'OpenAI: GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'OpenAI: GPT-4o-mini' },
+      { id: 'o1-preview', name: 'OpenAI: o1 Reasoning' },
+      { id: 'o3-mini', name: 'OpenAI: o3-mini' }
+    ]
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    base_url: 'https://api.groq.com/openai/v1',
+    models: [
+      { id: 'llama-3.3-70b-versatile', name: 'Groq: Llama 3.3 70B' },
+      { id: 'deepseek-r1-distill-llama-70b', name: 'Groq: DeepSeek R1 Distill 70B' }
+    ]
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local)',
+    base_url: 'http://localhost:11434/v1',
+    models: []
+  }
+];
 
-  // Seed default DeepSeek models
-  db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
-    'deepseek-reasoner', 'deepseek', 'deepseek-reasoner (R1 Thinking)', now
-  );
-  db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
-    'deepseek-chat', 'deepseek', 'deepseek-chat (V4.1 Coder)', now
-  );
+const seedNow = Date.now();
+for (const dp of DEFAULT_PROVIDERS) {
+  const existing = db.prepare('SELECT id, base_url, api_key FROM providers WHERE id = ?').get(dp.id);
+  if (!existing) {
+    const initKey = dp.id === 'deepseek' ? getSetting('deepseek_api_key', '') : '';
+    db.prepare('INSERT INTO providers (id, name, base_url, api_key, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      dp.id, dp.name, dp.base_url, initKey, seedNow
+    );
+  } else if (!existing.base_url) {
+    db.prepare('UPDATE providers SET base_url = ? WHERE id = ?').run(dp.base_url, dp.id);
+  }
+
+  for (const m of dp.models) {
+    db.prepare('INSERT OR IGNORE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)').run(
+      m.id, dp.id, m.name, seedNow
+    );
+  }
 }
 
 // Model Pricing Registry (Per 1 Million Tokens)
@@ -207,18 +262,24 @@ function getGitHubAuthHeader(token) {
 if (!getSetting('active_model')) setSetting('active_model', 'deepseek-reasoner');
 if (!getSetting('deepseek_endpoint')) setSetting('deepseek_endpoint', 'https://api.deepseek.com');
 if (!getSetting('currency_display')) setSetting('currency_display', 'both');
-if (!getSetting('workspace_root')) setSetting('workspace_root', '/Users/akashdeep/Desktop/personal harness');
 
 // Workspace & Git Helpers
 function getWorkspaceRoot() {
   const custom = getSetting('workspace_root');
   if (custom && fs.existsSync(custom)) return custom;
-  const preferred = '/Users/akashdeep/Desktop/personal harness';
-  if (fs.existsSync(preferred)) {
-    setSetting('workspace_root', preferred);
-    return preferred;
+  const homeDir = process.env.HOME || require('node:os').homedir();
+  const desktop = path.join(homeDir, 'Desktop');
+  const personalHarness = path.join(desktop, 'personal harness');
+  if (fs.existsSync(personalHarness)) {
+    setSetting('workspace_root', personalHarness);
+    return personalHarness;
   }
-  return process.cwd();
+  if (fs.existsSync(desktop)) {
+    setSetting('workspace_root', desktop);
+    return desktop;
+  }
+  setSetting('workspace_root', homeDir);
+  return homeDir;
 }
 
 function runGit(args, cwd = getWorkspaceRoot()) {
@@ -309,7 +370,8 @@ const server = http.createServer(async (req, res) => {
             headers: {
               'Authorization': `Bearer ${apiKey}`,
               'Accept': 'application/json'
-            }
+            },
+            signal: AbortSignal.timeout(6000)
           });
 
           if (!balanceRes.ok) {
@@ -490,6 +552,383 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      if (pathname === '/api/workspace/pick-folder' && method === 'POST') {
+        execFile('osascript', ['-e', 'POSIX path of (choose folder with prompt "Select Project Folder for DeepHarness Studio")'], async (err, stdout) => {
+          if (err) {
+            // User cancelled folder picker dialog
+            return sendJson(res, 200, { canceled: true });
+          }
+          const chosen = (stdout || '').trim();
+          if (chosen && fs.existsSync(chosen) && fs.statSync(chosen).isDirectory()) {
+            setSetting('workspace_root', chosen);
+            const gitCheck = await runGit(['rev-parse', '--is-inside-work-tree'], chosen);
+            return sendJson(res, 200, {
+              success: true,
+              root: chosen,
+              isGitRepo: gitCheck.success && gitCheck.stdout === 'true'
+            });
+          }
+          return sendJson(res, 400, { error: 'Invalid directory selected' });
+        });
+        return;
+      }
+
+      if (pathname === '/api/workspace/create-project' && method === 'POST') {
+        const body = await parseJsonBody(req);
+        let { name, parentDir, template = 'web', initGit = true } = body;
+        if (!name || !name.trim()) {
+          return sendJson(res, 400, { error: 'Project name is required' });
+        }
+        const safeName = name.trim().replace(/[^a-zA-Z0-9._-]/g, '-');
+        const baseDir = parentDir && fs.existsSync(parentDir) ? path.resolve(parentDir) : getWorkspaceRoot();
+        const projectPath = path.join(baseDir, safeName);
+
+        if (fs.existsSync(projectPath)) {
+          return sendJson(res, 400, { error: `Directory "${safeName}" already exists in ${baseDir}` });
+        }
+
+        try {
+          fs.mkdirSync(projectPath, { recursive: true });
+
+          if (template === 'web') {
+            fs.writeFileSync(path.join(projectPath, 'index.html'), `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${safeName}</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="badge">🚀 Modern Web App</div>
+      <h1>Welcome to <span>${safeName}</span></h1>
+      <p>Built with modern HTML5, CSS3, and JavaScript — ready for DeepHarness AI Studio.</p>
+      <div class="actions">
+        <button id="counterBtn" class="btn primary">Clicks: <span id="count">0</span></button>
+        <a href="https://github.com" target="_blank" class="btn ghost">GitHub ↗</a>
+      </div>
+    </header>
+
+    <section class="features">
+      <div class="card">
+        <h3>⚡ Fast & Lightweight</h3>
+        <p>Zero build step required. Runs instantly in any modern browser.</p>
+      </div>
+      <div class="card">
+        <h3>🎨 Clean Design</h3>
+        <p>Sleek dark-mode aesthetic with custom typography and CSS variables.</p>
+      </div>
+      <div class="card">
+        <h3>🤖 AI-Powered</h3>
+        <p>Edit and iterate seamlessly using DeepSeek in DeepHarness Studio.</p>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'style.css'), `:root {
+  --bg: #090b10;
+  --surface: #131722;
+  --surface-hover: #1a2030;
+  --border: #222938;
+  --accent: #38bdf8;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.container { max-width: 860px; width: 100%; }
+
+.hero {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, transparent 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 30px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+h1 span { color: var(--accent); }
+p { color: var(--text-dim); line-height: 1.6; }
+
+.actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.btn.primary { background: var(--accent); color: #000; }
+.btn.primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn.ghost { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn.ghost:hover { background: var(--surface-hover); }
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+.card:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, 0.3); }
+.card h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
+.card p { font-size: 13px; color: var(--text-dim); }
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'app.js'), `// ${safeName} Application Logic
+let count = 0;
+const counterBtn = document.getElementById('counterBtn');
+const countDisplay = document.getElementById('count');
+
+if (counterBtn && countDisplay) {
+  counterBtn.addEventListener('click', () => {
+    count++;
+    countDisplay.textContent = count;
+  });
+}
+
+console.log('🚀 ${safeName} initialized!');
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'README.md'), `# ${safeName}
+
+A modern web application built with HTML, CSS, and JavaScript.
+
+## Getting Started
+Open \`index.html\` directly in your browser, or develop in DeepHarness AI Studio.
+`);
+          } else if (template === 'react') {
+            fs.mkdirSync(path.join(projectPath, 'src'), { recursive: true });
+            fs.writeFileSync(path.join(projectPath, 'package.json'), JSON.stringify({
+              name: safeName,
+              private: true,
+              version: '0.0.1',
+              type: 'module',
+              scripts: {
+                dev: 'vite',
+                build: 'vite build',
+                preview: 'vite preview'
+              },
+              dependencies: {
+                react: '^18.3.1',
+                'react-dom': '^18.3.1'
+              },
+              devDependencies: {
+                '@vitejs/plugin-react': '^4.3.1',
+                vite: '^5.4.0'
+              }
+            }, null, 2));
+
+            fs.writeFileSync(path.join(projectPath, 'vite.config.js'), `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+});
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'index.html'), `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${safeName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'src', 'main.jsx'), `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'src', 'App.jsx'), `import React, { useState } from 'react';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div className="app-container">
+      <header className="hero">
+        <span className="badge">⚛️ React + Vite</span>
+        <h1>Welcome to <span>${safeName}</span></h1>
+        <p>High-performance React application scaffolded with DeepHarness AI Studio.</p>
+        <button onClick={() => setCount(c => c + 1)} className="btn primary">
+          Count is: {count}
+        </button>
+      </header>
+    </div>
+  );
+}
+`);
+
+            fs.writeFileSync(path.join(projectPath, 'src', 'index.css'), `:root {
+  --bg: #090b10;
+  --accent: #38bdf8;
+  --text: #f1f5f9;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+.app-container { text-align: center; max-width: 600px; padding: 20px; }
+.badge { color: var(--accent); font-weight: 600; font-size: 13px; }
+h1 span { color: var(--accent); }
+.btn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 16px;
+}
+`);
+
+            fs.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules\ndist\n.DS_Store\n`);
+            fs.writeFileSync(path.join(projectPath, 'README.md'), `# ${safeName}\n\nReact + Vite app.\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`);
+          } else if (template === 'node') {
+            fs.writeFileSync(path.join(projectPath, 'package.json'), JSON.stringify({
+              name: safeName,
+              version: '1.0.0',
+              main: 'server.js',
+              scripts: {
+                start: 'node server.js',
+                dev: 'node --watch server.js'
+              },
+              dependencies: {
+                express: '^4.19.2',
+                cors: '^2.8.5',
+                dotenv: '^16.4.5'
+              }
+            }, null, 2));
+
+            fs.writeFileSync(path.join(projectPath, 'server.js'), `const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', app: '${safeName}', uptime: process.uptime() });
+});
+
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'Hello from ${safeName} Backend API!' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running at http://localhost:\${PORT}\`);
+});
+`);
+
+            fs.writeFileSync(path.join(projectPath, '.env.example'), `PORT=3000\n`);
+            fs.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules\n.env\n.DS_Store\n`);
+            fs.writeFileSync(path.join(projectPath, 'README.md'), `# ${safeName}\n\nNode.js Express REST API.\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`);
+          } else if (template === 'python') {
+            fs.writeFileSync(path.join(projectPath, 'main.py'), `"""
+${safeName} — Starter Application
+"""
+
+def main():
+    print("🚀 Welcome to ${safeName}!")
+    print("Built and managed with DeepHarness AI Studio.")
+
+if __name__ == "__main__":
+    main()
+`);
+            fs.writeFileSync(path.join(projectPath, 'requirements.txt'), `# Add your Python dependencies here\n`);
+            fs.writeFileSync(path.join(projectPath, '.gitignore'), `__pycache__/\n*.py[cod]\n.venv/\nvenv/\n.env\n.DS_Store\n`);
+            fs.writeFileSync(path.join(projectPath, 'README.md'), `# ${safeName}\n\nPython application.\n\n\`\`\`bash\npython3 main.py\n\`\`\`\n`);
+          } else {
+            // Blank
+            fs.writeFileSync(path.join(projectPath, 'README.md'), `# ${safeName}\n\nCreated with DeepHarness AI Studio.\n`);
+            fs.writeFileSync(path.join(projectPath, '.gitignore'), `.DS_Store\nnode_modules/\n`);
+          }
+
+          let isGit = false;
+          if (initGit !== false) {
+            await runGit(['init'], projectPath);
+            await runGit(['branch', '-M', 'main'], projectPath);
+            await runGit(['add', '-A'], projectPath);
+            await runGit(['commit', '-m', `Initial commit: scaffold ${template} app via DeepHarness`], projectPath);
+            isGit = true;
+          }
+
+          setSetting('workspace_root', projectPath);
+
+          return sendJson(res, 200, {
+            success: true,
+            root: projectPath,
+            name: safeName,
+            isGitRepo: isGit,
+            template
+          });
+        } catch (err) {
+          console.error('Failed to create project:', err);
+          return sendJson(res, 500, { error: `Failed to create project: ${err.message}` });
+        }
+      }
+
       if (pathname === '/api/workspace/tree' && method === 'GET') {
         const root = getWorkspaceRoot();
         const reqPath = parsedUrl.searchParams.get('path') || '';
@@ -603,6 +1042,262 @@ const server = http.createServer(async (req, res) => {
         }
 
         return sendJson(res, 200, { success: true, path: reqPath });
+      }
+
+      // Fast recursive file scanner for @file context autocomplete
+      if (pathname === '/api/workspace/files-list' && method === 'GET') {
+        const root = getWorkspaceRoot();
+        const files = [];
+        const ignored = new Set(['.git', 'node_modules', 'dist', '.DS_Store', '.system_generated', '.gemini', '__pycache__', '.venv', '.turbo', '.next']);
+
+        function walk(dir, rel = '') {
+          if (files.length >= 2000) return;
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              if (ignored.has(entry.name)) continue;
+              const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                files.push({ name: entry.name, path: entryRel, isDirectory: true });
+                walk(fullPath, entryRel);
+              } else {
+                let size = 0;
+                try { size = fs.statSync(fullPath).size; } catch (e) {}
+                files.push({ name: entry.name, path: entryRel, isDirectory: false, size });
+              }
+            }
+          } catch (e) {}
+        }
+
+        walk(root);
+        return sendJson(res, 200, { root, files });
+      }
+
+      // Multi-file agentic applier
+      if (pathname === '/api/workspace/apply-files' && method === 'POST') {
+        const root = getWorkspaceRoot();
+        const body = await parseJsonBody(req);
+        const { files = [] } = body;
+        if (!Array.isArray(files) || files.length === 0) {
+          return sendJson(res, 400, { error: 'Files array required' });
+        }
+
+        const modified = [];
+        for (const item of files) {
+          if (!item.path || item.content === undefined) continue;
+          const fullPath = path.resolve(root, item.path);
+          if (!fullPath.startsWith(root)) continue;
+
+          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+          fs.writeFileSync(fullPath, item.content, 'utf-8');
+          modified.push(item.path);
+        }
+
+        globalPreviewTimestamp = Date.now();
+        return sendJson(res, 200, { success: true, count: modified.length, files: modified });
+      }
+
+      // In-Studio Live Preview Server
+      if (pathname.startsWith('/api/workspace/preview')) {
+        const root = getWorkspaceRoot();
+        let subPath = decodeURIComponent(pathname.replace(/^\/api\/workspace\/preview\/?/, ''));
+        if (!subPath || subPath === '') subPath = 'index.html';
+        const targetFile = path.resolve(root, subPath);
+
+        if (!targetFile.startsWith(root)) {
+          res.writeHead(403, { 'Content-Type': 'text/plain' });
+          return res.end('Access denied: Path outside workspace');
+        }
+
+        let finalPath = targetFile;
+        if (fs.existsSync(targetFile) && fs.statSync(targetFile).isDirectory()) {
+          finalPath = path.join(targetFile, 'index.html');
+        }
+
+        if (fs.existsSync(finalPath) && fs.statSync(finalPath).isFile()) {
+          const ext = path.extname(finalPath).toLowerCase();
+          const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+          if (ext === '.html') {
+            let html = fs.readFileSync(finalPath, 'utf-8');
+            const liveScript = `
+<script>
+(function() {
+  let lastCheck = ${globalPreviewTimestamp};
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/workspace/preview-timestamp');
+      const data = await res.json();
+      if (data.timestamp > lastCheck) {
+        lastCheck = data.timestamp;
+        window.location.reload();
+      }
+    } catch(e) {}
+  }, 1000);
+})();
+</script>`;
+            html = html.includes('</body>') ? html.replace('</body>', `${liveScript}</body>`) : html + liveScript;
+            res.writeHead(200, {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            });
+            return res.end(html);
+          }
+
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          });
+          return fs.createReadStream(finalPath).pipe(res);
+        } else {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          return res.end(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="utf-8"><style>body{background:#0b0f19;color:#94a3b8;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}h2{color:#f8fafc;margin-bottom:8px;font-size:18px;}p{font-size:13px;color:#64748b;max-width:360px;line-height:1.5;}code{background:#1e293b;color:#38bdf8;padding:2px 6px;border-radius:4px;}</style></head>
+            <body>
+              <div>
+                <h2>No Static HTML Entry Found</h2>
+                <p>Create an <code>index.html</code> in this project folder, or run a dev server (e.g. <code>http://localhost:5173</code>) and enter the URL in the address bar above.</p>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+      }
+
+      if (pathname === '/api/workspace/preview-timestamp' && method === 'GET') {
+        return sendJson(res, 200, { timestamp: globalPreviewTimestamp });
+      }
+
+      // 4b-iii. Integrated Terminal & Command Runner
+      if (pathname === '/api/terminal/run' && method === 'POST') {
+        const root = getWorkspaceRoot();
+        const body = await parseJsonBody(req);
+        const { command } = body;
+        if (!command || !command.trim()) {
+          return sendJson(res, 400, { error: 'Command required' });
+        }
+
+        const id = crypto.randomUUID();
+        const cleanCmd = command.trim();
+
+        const proc = require('node:child_process').spawn('/bin/zsh', ['-l', '-c', cleanCmd], {
+          cwd: root,
+          env: {
+            ...process.env,
+            PATH: `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:${process.env.PATH || ''}`,
+            FORCE_COLOR: '1'
+          }
+        });
+
+        const session = {
+          id,
+          command: cleanCmd,
+          process: proc,
+          buffer: [],
+          isRunning: true,
+          exitCode: null,
+          errorOutput: '',
+          listeners: new Set(),
+          startTime: Date.now()
+        };
+
+        const appendLog = (type, text) => {
+          const entry = { type, text, time: Date.now() };
+          session.buffer.push(entry);
+          if (session.buffer.length > 2000) session.buffer.shift();
+          if (type === 'stderr') session.errorOutput += text;
+          for (const listener of session.listeners) {
+            try { listener(entry); } catch (e) {}
+          }
+        };
+
+        appendLog('info', `▶ [Terminal] ${cleanCmd}\n`);
+
+        proc.stdout.on('data', (chunk) => appendLog('stdout', chunk.toString('utf-8')));
+        proc.stderr.on('data', (chunk) => appendLog('stderr', chunk.toString('utf-8')));
+
+        proc.on('close', (code) => {
+          session.isRunning = false;
+          session.exitCode = code;
+          if (code === 0) {
+            appendLog('info', `\n✓ Process finished (code 0)\n`);
+          } else {
+            appendLog('error', `\n✗ Process exited with code ${code}\n`);
+          }
+        });
+
+        proc.on('error', (err) => {
+          session.isRunning = false;
+          appendLog('error', `\n✗ Process error: ${err.message}\n`);
+        });
+
+        terminalSessions.set(id, session);
+        return sendJson(res, 200, { id, command: cleanCmd, isRunning: true });
+      }
+
+      if (pathname === '/api/terminal/stream' && method === 'GET') {
+        const id = parsedUrl.searchParams.get('id');
+        const session = terminalSessions.get(id);
+        if (!session) {
+          return sendJson(res, 404, { error: 'Terminal session not found' });
+        }
+
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        });
+
+        // Send existing buffer
+        for (const entry of session.buffer) {
+          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+        }
+
+        const listener = (entry) => {
+          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+        };
+
+        session.listeners.add(listener);
+
+        req.on('close', () => {
+          session.listeners.delete(listener);
+        });
+        return;
+      }
+
+      if (pathname === '/api/terminal/kill' && method === 'POST') {
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        const session = terminalSessions.get(id);
+        if (session && session.isRunning && session.process) {
+          try {
+            session.process.kill('SIGTERM');
+            setTimeout(() => {
+              if (session.isRunning) {
+                try { session.process.kill('SIGKILL'); } catch (e) {}
+              }
+            }, 1000);
+          } catch (e) {}
+          return sendJson(res, 200, { success: true });
+        }
+        return sendJson(res, 200, { success: true, message: 'Process not running' });
+      }
+
+      if (pathname === '/api/terminal/status' && method === 'GET') {
+        const id = parsedUrl.searchParams.get('id');
+        const session = terminalSessions.get(id);
+        if (!session) return sendJson(res, 404, { error: 'Session not found' });
+        return sendJson(res, 200, {
+          id: session.id,
+          command: session.command,
+          isRunning: session.isRunning,
+          exitCode: session.exitCode,
+          hasError: session.exitCode !== null && session.exitCode !== 0,
+          errorOutput: session.errorOutput.slice(-3000)
+        });
       }
 
       // 4c. Git & GitHub Operations
@@ -1186,8 +1881,16 @@ const server = http.createServer(async (req, res) => {
           if (apiKey) {
             headers['Authorization'] = `Bearer ${apiKey}`;
           }
+          if (providerId === 'openrouter') {
+            headers['HTTP-Referer'] = 'https://github.com/deepharness';
+            headers['X-Title'] = 'DeepHarness';
+          }
 
-          const fetchRes = await fetch(modelsUrl, { method: 'GET', headers });
+          const fetchRes = await fetch(modelsUrl, {
+            method: 'GET',
+            headers,
+            signal: AbortSignal.timeout(12000)
+          });
           if (!fetchRes.ok) {
             const errText = await fetchRes.text();
             return sendJson(res, fetchRes.status, {
@@ -1200,11 +1903,11 @@ const server = http.createServer(async (req, res) => {
           let rawModels = [];
 
           if (Array.isArray(data.data)) {
-            rawModels = data.data.map(m => m.id);
+            rawModels = data.data.map(m => ({ id: m.id || m.name, name: m.name || m.id }));
           } else if (Array.isArray(data.models)) {
-            rawModels = data.models.map(m => m.name || m.model);
+            rawModels = data.models.map(m => ({ id: m.name || m.model || m.id, name: m.name || m.id }));
           } else if (Array.isArray(data)) {
-            rawModels = data.map(m => typeof m === 'string' ? m : (m.id || m.name));
+            rawModels = data.map(m => ({ id: typeof m === 'string' ? m : (m.id || m.name), name: typeof m === 'string' ? m : (m.name || m.id) }));
           }
 
           if (rawModels.length === 0) {
@@ -1213,9 +1916,9 @@ const server = http.createServer(async (req, res) => {
 
           const insertStmt = db.prepare('INSERT OR REPLACE INTO models (id, provider_id, name, created_at) VALUES (?, ?, ?, ?)');
           const now = Date.now();
-          for (const modelId of rawModels) {
-            if (modelId) {
-              insertStmt.run(String(modelId), providerId, String(modelId), now);
+          for (const m of rawModels) {
+            if (m.id) {
+              insertStmt.run(String(m.id), providerId, String(m.name || m.id), now);
             }
           }
 
@@ -1270,6 +1973,8 @@ const server = http.createServer(async (req, res) => {
           providerId = 'openai';
         } else if (model.includes('/')) {
           providerId = 'openrouter';
+        } else if (model.startsWith('glm') || model.startsWith('codegeex') || model.startsWith('charglm')) {
+          providerId = 'zai';
         }
 
         const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
@@ -1371,6 +2076,10 @@ const server = http.createServer(async (req, res) => {
           };
           if (apiKey) {
             reqHeaders['Authorization'] = `Bearer ${apiKey}`;
+          }
+          if (providerId === 'openrouter') {
+            reqHeaders['HTTP-Referer'] = 'https://github.com/deepharness';
+            reqHeaders['X-Title'] = 'DeepHarness';
           }
 
           // Send request to LLM Chat Completions

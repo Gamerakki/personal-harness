@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepHarness — DeepSeek Studio</title>
-  <link rel="stylesheet" href="style.css?v=5.5">
+  <link rel="stylesheet" href="style.css?v=4.2">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,14 +28,15 @@
         </div>
       </div>
 
-      <!-- Center: Clean Telemetry Status Group -->
+      <!-- Center: Clean Telemetry Pills -->
       <div class="header-center">
         <!-- Live Balance Pill -->
         <div class="pill-badge balance-pill" id="balanceCard" title="Live DeepSeek Account Balance">
           <span class="pill-dot" id="balanceStatusDot"></span>
+          <span class="pill-label">Balance:</span>
           <span class="pill-val balance-text" id="balanceDisplay">Loading...</span>
           <button class="pill-action-btn" id="refreshBalanceBtn" title="Refresh Live Balance">
-            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
             </svg>
           </button>
@@ -44,13 +45,14 @@
         <!-- Session Tokens Pill -->
         <div class="pill-badge session-pill" id="sessionTokenCard" title="Tokens consumed in this session">
           <span class="pill-icon">⚡</span>
+          <span class="pill-label">Session:</span>
           <span class="pill-val" id="sessionTokensDisplay">0 tok</span>
           <span class="pill-sub" id="sessionCostDisplay">(¥0.00)</span>
         </div>
 
-        <!-- Cache Hit Rate Pill (Subtle) -->
-        <div class="pill-badge cache-pill" id="cacheEfficiencyCard" title="DeepSeek Prompt Cache Hit Rate">
-          <span class="pill-badge-tag" id="cacheRatePercent">0%</span>
+        <!-- Cache Hit Rate Pill -->
+        <div class="pill-badge cache-pill" id="cacheEfficiencyCard" title="DeepSeek Prompt Cache Hit Rate (Cheaper Tokens)">
+          <span class="pill-badge-tag" id="cacheRatePercent">0% Cache Hit</span>
           <span class="pill-savings" id="cacheSavingsDisplay">Saved: ¥0.00</span>
         </div>
       </div>
@@ -62,30 +64,30 @@
             <option value="deepseek-reasoner" selected>🧠 deepseek-reasoner (R1)</option>
             <option value="deepseek-chat">⚡ deepseek-chat (V4.1)</option>
           </select>
-          <button class="icon-tool-btn" id="fetchModelsBtn" title="Auto-fetch all models from provider API" style="display: none;">
+          <button class="icon-tool-btn" id="fetchModelsBtn" title="Auto-fetch all models from provider API">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
             </svg>
           </button>
         </div>
 
-        <div class="model-rate-pill" id="activeModelRatePill" title="Official API Pricing Rate per Million Tokens" style="display: none;">
+        <div class="model-rate-pill" id="activeModelRatePill" title="Official API Pricing Rate per Million Tokens">
           <span>In: ¥1.00/M</span>
           <span class="rate-sep">•</span>
           <span>Out: ¥2.19/M</span>
         </div>
 
         <button class="nav-icon-btn primary-studio-btn" id="openEditorBtn" title="Workspace Studio: Files, Code Editor & GitHub PR (⌥S)">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
             <line x1="12" y1="2" x2="12" y2="6"/>
           </svg>
-          <span class="nav-btn-label">Studio</span>
+          <span class="nav-btn-label">Studio & Git</span>
         </button>
 
         <button class="nav-icon-btn" id="openVaultBtn" title="Code Vault & Saved Snippets">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
           <span class="nav-btn-label">Vault</span>
           <span class="badge-mini" id="vaultCountBadge">0</span>
@@ -192,7 +194,7 @@
             </div>
           </div>
           <div class="session-quick-actions">
-            <button class="btn-ghost-sm studio" id="openEditorChatBtn" title="Workspace Studio: Files, Code & Git (⌥S)" style="display: none;">
+            <button class="btn-ghost-sm studio" id="openEditorChatBtn" title="Workspace Studio: Files, Code & Git (⌥S)">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
                 <line x1="12" y1="2" x2="12" y2="6"/>
@@ -204,15 +206,16 @@
               <div class="gauge-bar">
                 <div class="gauge-fill" id="contextGaugeFill" style="width: 2%"></div>
               </div>
-              <span class="gauge-text" id="contextGaugeText">0 / 64k</span>
+              <span class="gauge-text" id="contextGaugeText">0 / 64k tok</span>
             </div>
-            <button class="btn-ghost-sm icon-only-ghost" id="exportSessionBtn" title="Export Markdown Transcript">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="btn-ghost-sm" id="exportSessionBtn" title="Export Markdown Transcript">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
+              <span>Export</span>
             </button>
-            <button class="btn-ghost-sm danger icon-only-ghost" id="clearSessionBtn" title="Delete conversation">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="btn-ghost-sm danger" id="clearSessionBtn" title="Delete conversation">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
               </svg>
             </button>
@@ -292,67 +295,44 @@
         <!-- Floating Chat Input Dock (Raycast / Cursor Floating Style) -->
         <div class="floating-input-container">
           
-          <!-- Role Persona Strip (Sleek Compact Toolbar) -->
+          <!-- Role Persona Strip -->
           <div class="role-selector-strip">
-            <div class="role-selector-left">
-              <!-- Compact Persona Dropdown Menu -->
-              <div class="persona-dropdown-container">
-                <button type="button" class="persona-dropdown-btn" id="personaDropdownBtn" title="Switch AI Persona / Prompt Preset">
-                  <span class="persona-btn-icon" id="personaBtnIcon">🧠</span>
-                  <span class="persona-btn-label" id="personaBtnLabel">Deep Architect</span>
-                  <svg class="chevron-icon" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="persona-menu-dropdown" id="personaMenuDropdown" style="display: none;">
-                  <button type="button" class="role-chip persona-menu-item active" data-preset="r1-architect">
-                    <span class="pmi-icon">🧠</span>
-                    <div class="pmi-info">
-                      <span class="pmi-name">Deep Architect</span>
-                      <span class="pmi-desc">System design, algorithms & reasoning</span>
-                    </div>
-                  </button>
-                  <button type="button" class="role-chip persona-menu-item" data-preset="v3-coder">
-                    <span class="pmi-icon">⚡</span>
-                    <div class="pmi-info">
-                      <span class="pmi-name">Fast Coder (V4.1)</span>
-                      <span class="pmi-desc">Concise code & fast turnarounds</span>
-                    </div>
-                  </button>
-                  <button type="button" class="role-chip persona-menu-item" data-preset="bug-hunter">
-                    <span class="pmi-icon">🛡️</span>
-                    <div class="pmi-info">
-                      <span class="pmi-name">Bug Hunter</span>
-                      <span class="pmi-desc">Root-cause audit & edge-case discovery</span>
-                    </div>
-                  </button>
-                  <button type="button" class="role-chip persona-menu-item" data-preset="token-saver">
-                    <span class="pmi-icon">🪙</span>
-                    <div class="pmi-info">
-                      <span class="pmi-name">Token Saver</span>
-                      <span class="pmi-desc">Minimalist, zero fluff, cheapest cost</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
+            <div class="role-pill-group">
+              <button class="role-chip active" data-preset="r1-architect">
+                <span>🧠</span>
+                <span>Deep Architect</span>
+              </button>
+              <button class="role-chip" data-preset="v3-coder">
+                <span>⚡</span>
+                <span>Fast Coder (V4.1)</span>
+              </button>
+              <button class="role-chip" data-preset="bug-hunter">
+                <span>🛡️</span>
+                <span>Bug Hunter</span>
+              </button>
+              <button class="role-chip" data-preset="token-saver">
+                <span>🪙</span>
+                <span>Token Saver</span>
+              </button>
+            </div>
 
-              <!-- Smart Model Auto-Router & Segmented Switcher -->
-              <div class="quick-mode-group" title="Execution Mode: Fast V4.1 vs Deep R1 vs Auto">
-                <button type="button" class="mode-btn active" id="modeFastBtn" data-mode="fast" title="Fast V4.1: Instant streaming, lowest cost">
-                  <span>⚡ Fast</span>
-                </button>
-                <button type="button" class="mode-btn" id="modeDeepBtn" data-mode="deep" title="Deep R1: Exhaustive reasoning & algorithms">
-                  <span>🧠 Deep</span>
-                </button>
-                <button type="button" class="mode-btn" id="modeAutoBtn" data-mode="auto" title="Auto-Detect: Automatically picks V4.1 or R1">
-                  <span id="autoModeLabel">🎯 Auto</span>
-                </button>
-              </div>
+            <!-- Smart Model Auto-Router & Quick Switcher -->
+            <div class="quick-mode-group" title="Execution Mode Router: Fast V4.1 (Direct code, 0 thinking tokens) vs Deep R1 (Step-by-step reasoning) vs Auto-Router">
+              <button type="button" class="mode-btn active" id="modeFastBtn" data-mode="fast" title="Fast V4.1: Instant streaming, zero thinking tokens, lowest cost">
+                <span>⚡ Fast (V4.1)</span>
+              </button>
+              <button type="button" class="mode-btn" id="modeDeepBtn" data-mode="deep" title="Deep R1: Exhaustive reasoning, memory models & algorithms">
+                <span>🧠 Deep (R1)</span>
+              </button>
+              <button type="button" class="mode-btn" id="modeAutoBtn" data-mode="auto" title="Auto-Detect: Automatically picks V4.1 for speed or R1 for architecture">
+                <span id="autoModeLabel">🎯 Auto</span>
+              </button>
             </div>
             
             <div class="role-meta-right">
-              <span class="prompt-token-meter" id="promptTokenMeter" title="Pre-Flight estimated tokens">~0 tok</span>
+              <span class="prompt-token-meter" id="promptTokenMeter" title="Pre-Flight telemetry: Estimated tokens, cost, and prefix cache hit rate before sending">Est: ~0 tok</span>
               <button class="btn-subtle" id="toggleSystemPromptBtn" title="Inspect or edit system prompt">
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                <span>System</span>
+                <span>System Prompt</span>
               </button>
             </div>
           </div>
@@ -368,22 +348,6 @@
 
           <!-- Input Box Card -->
           <div class="floating-input-card" id="floatingInputCard">
-            <!-- Context Files Attached Pills Container -->
-            <div class="context-tags-container" id="contextTagsContainer" style="display: none;">
-              <!-- Pills inserted dynamically: [📄 src/App.jsx ✕] -->
-            </div>
-
-            <!-- Autocomplete Floating Dropdown for @file -->
-            <div class="file-autocomplete-dropdown" id="fileAutocompleteDropdown" style="display: none;">
-              <div class="fad-header">
-                <span>WORKSPACE FILES (@)</span>
-                <span class="fad-hint">↑↓ navigate · ↵ attach · Esc close</span>
-              </div>
-              <div class="fad-list" id="fadList">
-                <!-- Dynamic file items -->
-              </div>
-            </div>
-
             <!-- Attached Image Preview Container -->
             <div class="attachment-preview-container" id="attachmentPreviewContainer" style="display: none;">
               <div class="attachment-thumb-wrapper">
@@ -399,32 +363,25 @@
             <textarea 
               id="promptTextarea" 
               class="prompt-textarea" 
-              placeholder="Ask anything, type @ to attach files... (⌘↵ to send)"
+              placeholder="Ask DeepSeek anything or paste screenshot ⌘+V... (Press ⌘+Enter to send)"
               rows="1"
             ></textarea>
 
             <div class="input-card-bottom">
               <div class="icb-left">
-                <button type="button" class="btn-attach-img" id="attachFileContextBtn" title="Attach file from workspace to prompt context (@file)">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span>@ File</span>
-                </button>
-
                 <button type="button" class="btn-attach-img" id="attachImageBtn" title="Attach screenshot or image (or ⌘+V paste directly)">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
-                  <span>Image</span>
+                  <span>Attach Image</span>
                 </button>
                 <input type="file" id="imageFileInput" accept="image/*" style="display: none;" />
 
-                <span class="badge-prefix-cache" title="Prompt prefix caching is active (90% cheaper token rates)">
+                <span class="badge-prefix-cache">
                   <span class="dot-green"></span>
-                  <span class="bpc-label">Cache Ready</span>
+                  <span>Prefix Caching Active</span>
                 </span>
               </div>
               <div class="icb-right">
@@ -451,24 +408,23 @@
       <div class="studio-header">
         <div class="sh-left">
           <div class="sh-title">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
-            <span>Studio</span>
+            <span>Workspace Studio</span>
           </div>
-          <div class="studio-root-badge" id="studioRootBadge" title="Click to Change Workspace Folder">
+          <div class="studio-root-badge" id="studioRootBadge" title="Click to Change Folder / Open Directory">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             <span id="studioRootDisplay">/workspace</span>
-            <span class="srb-arrow">▾</span>
           </div>
-          <button type="button" class="btn-studio-action-xs" id="studioOpenFolderBtn" style="display: none;" title="Open Folder... (Select any local folder on your Mac)">
+          <button type="button" class="btn-studio-action-xs" id="studioOpenFolderBtn" title="Open Folder... (Select any local folder on your Mac)">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <span>Open</span>
+            <span>Open Folder</span>
           </button>
           <button type="button" class="btn-studio-action-xs primary" id="studioNewProjectBtn" title="Create New App or Project">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>+ New</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>+ New App</span>
           </button>
         </div>
 
@@ -479,20 +435,16 @@
         </div>
 
         <div class="sh-right">
-          <!-- Studio View Mode Segmented Controls -->
-          <div class="studio-view-modes" id="studioViewModes">
-            <button type="button" class="btn-svm active" id="svmEditorBtn" title="Code Editor View">Code</button>
-            <button type="button" class="btn-svm" id="svmSplitBtn" title="Split View: Code + Live Web Preview">Split</button>
-            <button type="button" class="btn-svm" id="svmPreviewBtn" title="Full Live Web Preview">Preview</button>
-            <button type="button" class="btn-svm" id="svmDiffBtn" title="Git Diff View">Diff</button>
-          </div>
-
           <button class="btn-studio-action" id="studioSaveFileBtn" title="Save file to disk (⌘+S)">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             <span>Save</span>
             <kbd class="kbd-hint">⌘S</kbd>
           </button>
-          <button class="btn-studio-action ghost" id="studioHeaderGithubBtn" style="display: none;" title="Open Git & GitHub Manager">
+          <button class="btn-studio-action ghost" id="studioToggleDiffBtn" title="Toggle Diff Viewer">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+            <span id="diffBtnLabel">Diff</span>
+          </button>
+          <button class="btn-studio-action ghost" id="studioHeaderGithubBtn" title="Open Git & GitHub Manager">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             <span>GitHub</span>
           </button>
@@ -513,11 +465,6 @@
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
               <span>Git & PR</span>
               <span class="studio-git-badge" id="studioGitBadge" style="display: none;">0</span>
-            </button>
-            <button class="studio-tab-btn" id="studioTabBtnTerminal" data-tab="terminal">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-              <span>Runner</span>
-              <span class="studio-term-badge" id="studioTermBadge" style="display: none;">●</span>
             </button>
           </div>
 
@@ -547,86 +494,23 @@
 
           <!-- Panel 2: Git & Pull Requests -->
           <div class="studio-tab-panel" id="studioPanelGit" style="display: none;">
-            <!-- Branch & Remote Header Card -->
+            <!-- Branch & Remote Header -->
             <div class="git-header-card">
-              <!-- Top Row: Compact Identity (Repo link & User chip) -->
-              <div class="git-identity-bar" id="gitIdentityBar">
-                <!-- Linked State -->
-                <div class="grb-linked" id="gitLinkedState" style="display: none;">
-                  <div class="grb-info">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-                    <a href="#" target="_blank" id="gitRepoLink" class="grb-repo-link" title="Open repository on GitHub">owner/repo</a>
-                  </div>
-                  <button type="button" class="btn-git-icon-ghost" id="gitEditRemoteBtn" title="Set or change remote origin URL">
-                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  </button>
-                </div>
-
-                <!-- GitHub Account Chip (Authenticated) -->
-                <div class="gh-account-card authenticated" id="ghAccountAuth" style="display: none;">
-                  <div class="ghac-left" title="Connected GitHub Account">
-                    <img id="ghUserAvatar" class="ghac-avatar" src="" alt="avatar" />
-                    <span class="ghac-username" id="ghUsername">@username</span>
-                  </div>
-                  <button type="button" class="btn-gh-signout" id="ghSignOutBtn" title="Disconnect GitHub account">✕</button>
-                </div>
-              </div>
-
-              <!-- Unauthenticated State Card -->
-              <div class="gh-account-card unauthenticated" id="ghAccountUnauth">
-                <div class="ghac-left">
-                  <div class="ghac-icon">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                  </div>
-                  <div class="ghac-info">
-                    <span class="ghac-title">GitHub Account</span>
-                    <span class="ghac-sub">Not connected</span>
-                  </div>
-                </div>
-                <button type="button" class="btn-gh-signin-compact" id="openGhSignInBtn">🔑 Sign In</button>
-              </div>
-
-              <!-- Unlinked State Banner -->
-              <div class="grb-unlinked" id="gitUnlinkedState">
-                <div class="github-unlinked-banner">
-                  <div class="gub-top">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-                    <span class="gub-title">GitHub Repository</span>
-                  </div>
-                  <p class="gub-desc">Create & publish a new repository directly to GitHub.</p>
-                  <div class="gub-btn-row">
-                    <button class="btn-publish-github" id="toggleInlineCreateRepoBtn">
-                      <span>🐙 Create Repo</span>
-                    </button>
-                    <button class="btn-link-remote-xs" id="toggleInlineLinkRemoteBtn" title="Link existing git remote URL">
-                      <span>🔗 Link URL</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Branch & Action Toolbar (Single Sleek Row) -->
-              <div class="git-branch-toolbar">
+              <!-- Branch Selector Row -->
+              <div class="ghc-row">
+                <span class="ghc-label">BRANCH</span>
                 <div class="branch-selector-wrapper">
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
                   <select id="gitBranchSelect" class="git-branch-select" title="Switch Branch">
                     <option value="main">main</option>
                   </select>
                 </div>
-                <div class="git-toolbar-actions">
-                  <button class="icon-tool-btn" id="gitNewBranchBtn" title="Create New Branch">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  </button>
-                  <button class="icon-tool-btn" id="gitPullBtn" title="Pull from remote (git pull)">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-                  </button>
-                  <button class="icon-tool-btn" id="gitRefreshBtn" title="Refresh git status">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                  </button>
-                  <button class="icon-tool-btn" id="gitDeleteBranchBtn" title="Delete a branch">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </button>
-                </div>
+              </div>
+              <div class="ghc-actions-row">
+                <button class="btn-git-action-sm primary" id="gitNewBranchBtn" title="Create & switch to new branch">+ Branch</button>
+                <button class="btn-git-action-sm" id="gitDeleteBranchBtn" title="Delete a branch">✕ Branch</button>
+                <button class="btn-git-action-sm" id="gitPullBtn" title="Pull from remote">↓ Pull</button>
+                <button class="btn-git-action-sm" id="gitRefreshBtn" title="Refresh git status">↻</button>
               </div>
 
               <!-- INLINE: New Branch Drawer (Instant, inline, zero-modal) -->
@@ -659,125 +543,179 @@
                 <div id="inlineDeleteBranchNotice" class="pr-result-notice" style="display: none;"></div>
               </div>
 
-              <!-- GITHUB REPOSITORY CARD WRAPPER (Preserving id gitRepoBar) -->
-              <div class="git-repo-bar" id="gitRepoBar" style="display: none;"></div>
-
-              <!-- INLINE: Sign In to GitHub Card (Zero-modal, 100% visible) -->
-              <div class="git-inline-form-card" id="inlineGhSignInCard" style="display: none;">
-                <div class="gifc-header">
-                  <span>SIGN IN TO GITHUB</span>
-                  <button type="button" class="btn-gifc-close" id="closeInlineGhSignInBtn">✕</button>
-                </div>
-                <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.35;">
-                  Sign in once to link your account. All future repo creation & code pushing will happen automatically under your account.
-                </p>
-
-                <div class="signin-step-card" style="margin-bottom: 8px;">
-                  <div class="ssc-step">1</div>
-                  <div class="ssc-content">
-                    <span class="ssc-title">Generate Personal Token</span>
-                    <p class="ssc-desc">Opens GitHub with the required scopes (<code>repo</code>, <code>read:user</code>) pre-selected.</p>
-                    <button type="button" class="btn-open-gh-token" id="inlineOpenGhTokenBtn">
-                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                      <span>Open GitHub Token Page</span>
-                    </button>
+              <!-- GITHUB REPOSITORY CARD -->
+              <div class="git-repo-bar" id="gitRepoBar">
+                <!-- Linked to GitHub -->
+                <!-- GitHub Account Session Card -->
+                <div class="gh-account-card unauthenticated" id="ghAccountUnauth">
+                  <div class="ghac-left">
+                    <div class="ghac-icon">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    </div>
+                    <div class="ghac-info">
+                      <span class="ghac-title">GitHub Account</span>
+                      <span class="ghac-sub">Not connected</span>
+                    </div>
                   </div>
+                  <button type="button" class="btn-gh-signin" id="openGhSignInBtn">🔑 Sign In</button>
                 </div>
 
-                <div class="signin-step-card" style="margin-bottom: 8px;">
-                  <div class="ssc-step">2</div>
-                  <div class="ssc-content">
-                    <span class="ssc-title">Paste Token</span>
-                    <div class="input-with-action" style="margin-top: 5px;">
-                      <input type="password" id="inlineGhSignInTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
-                      <button type="button" class="btn-toggle-eye" id="toggleInlineGhSignInVisibility">👁️</button>
+                <!-- INLINE: Sign In to GitHub Card (Zero-modal, 100% visible) -->
+                <div class="git-inline-form-card" id="inlineGhSignInCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>SIGN IN TO GITHUB</span>
+                    <button type="button" class="btn-gifc-close" id="closeInlineGhSignInBtn">✕</button>
+                  </div>
+                  <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.35;">
+                    Sign in once to link your account. All future repo creation & code pushing will happen automatically under your account.
+                  </p>
+
+                  <div class="signin-step-card" style="margin-bottom: 8px;">
+                    <div class="ssc-step">1</div>
+                    <div class="ssc-content">
+                      <span class="ssc-title">Generate Personal Token</span>
+                      <p class="ssc-desc">Opens GitHub with the required scopes (<code>repo</code>, <code>read:user</code>) pre-selected.</p>
+                      <button type="button" class="btn-open-gh-token" id="inlineOpenGhTokenBtn">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        <span>Open GitHub Token Page</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="signin-step-card" style="margin-bottom: 8px;">
+                    <div class="ssc-step">2</div>
+                    <div class="ssc-content">
+                      <span class="ssc-title">Paste Token</span>
+                      <div class="input-with-action" style="margin-top: 5px;">
+                        <input type="password" id="inlineGhSignInTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                        <button type="button" class="btn-toggle-eye" id="toggleInlineGhSignInVisibility">👁️</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="gifc-actions">
+                    <button type="button" class="btn-publish-github-full" id="confirmInlineGhSignInBtn">✓ Sign In & Link Account</button>
+                  </div>
+                  <div id="inlineGhSignInNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
+                </div>
+
+                <div class="gh-account-card authenticated" id="ghAccountAuth" style="display: none;">
+                  <div class="ghac-left">
+                    <img id="ghUserAvatar" class="ghac-avatar" src="" alt="avatar" />
+                    <div class="ghac-info">
+                      <span class="ghac-username" id="ghUsername">@username</span>
+                      <span class="ghac-status"><span class="dot-green-xs"></span> Connected · Token saved ✓</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-gh-signout" id="ghSignOutBtn" title="Disconnect GitHub account">Sign Out</button>
+                </div>
+
+                <div class="grb-linked" id="gitLinkedState" style="display: none;">
+                  <div class="grb-info">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                    <a href="#" target="_blank" id="gitRepoLink" class="grb-repo-link" title="Open repository on GitHub">owner/repo</a>
+                  </div>
+                  <button class="btn-git-action-xs" id="gitEditRemoteBtn" title="Set or change remote origin URL">Edit URL</button>
+                </div>
+
+                <!-- Not Linked to GitHub Yet -->
+                <div class="grb-unlinked" id="gitUnlinkedState">
+                  <div class="github-unlinked-banner">
+                    <div class="gub-top">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                      <span class="gub-title">GitHub Repository</span>
+                    </div>
+                    <p class="gub-desc">Create & publish a new repository directly to GitHub.</p>
+                    <div class="gub-btn-row">
+                      <button class="btn-publish-github" id="toggleInlineCreateRepoBtn">
+                        <span>🐙 Create GitHub Repo</span>
+                      </button>
+                      <button class="btn-link-remote-xs" id="toggleInlineLinkRemoteBtn" title="Link existing git remote URL">
+                        <span>🔗 Link URL</span>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <div class="gifc-actions">
-                  <button type="button" class="btn-publish-github-full" id="confirmInlineGhSignInBtn">✓ Sign In & Link Account</button>
-                </div>
-                <div id="inlineGhSignInNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
-              </div>
-
-              <!-- INLINE: Create GitHub Repo Form (Instant, inline, zero-modal) -->
-              <div class="git-inline-form-card" id="inlineCreateRepoCard" style="display: none;">
-                <div class="gifc-header">
-                  <span>CREATE GITHUB REPOSITORY</span>
-                  <button class="btn-gifc-close" id="closeInlineCreateRepoBtn">✕</button>
-                </div>
-
-                <!-- Connected Account Banner -->
-                <div class="inline-auth-badge" id="inlineRepoAuthBadge" style="display: none;">
-                  <span class="iab-dot"></span>
-                  <span>Publishing to: <b id="inlinePublishAsUser">@username</b> (Token auto-loaded ✓)</span>
-                </div>
-
-                <!-- Prompt to connect if not authenticated -->
-                <div class="inline-auth-prompt" id="inlineRepoAuthPrompt">
-                  <span>💡 Sign in once to auto-load your token forever.</span>
-                  <button type="button" class="btn-signin-link" id="inlinePromptSignInBtn">Sign In with GitHub</button>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 8px;">
-                  <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">REPO NAME</label>
-                  <input type="text" id="inlineRepoNameInput" class="git-inline-input" placeholder="e.g. personal-harness" autocomplete="off" />
-                </div>
-                <div class="form-group" style="margin-bottom: 8px;">
-                  <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">DESCRIPTION (OPTIONAL)</label>
-                  <input type="text" id="inlineRepoDescInput" class="git-inline-input" placeholder="Short description..." autocomplete="off" />
-                </div>
-                <div class="form-group" style="margin-bottom: 8px;">
-                  <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">VISIBILITY</label>
-                  <div class="visibility-pill-group">
-                    <label class="vis-pill active" id="inlineVisPillPublic">
-                      <input type="radio" name="inlineRepoVis" value="public" checked style="display: none;">
-                      <span>🌐 Public</span>
-                    </label>
-                    <label class="vis-pill" id="inlineVisPillPrivate">
-                      <input type="radio" name="inlineRepoVis" value="private" style="display: none;">
-                      <span>🔒 Private</span>
-                    </label>
+                <!-- INLINE: Create GitHub Repo Form (Instant, inline, zero-modal) -->
+                <div class="git-inline-form-card" id="inlineCreateRepoCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>CREATE GITHUB REPOSITORY</span>
+                    <button class="btn-gifc-close" id="closeInlineCreateRepoBtn">✕</button>
                   </div>
-                </div>
 
-                <!-- Manual PAT Group: Hidden when signed in -->
-                <div class="form-group" id="inlineRepoTokenGroup" style="margin-bottom: 8px;">
-                  <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">GITHUB PAT TOKEN</label>
-                  <div class="input-with-action">
-                    <input type="password" id="inlineRepoTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
-                    <button class="btn-toggle-eye" id="toggleInlineGhKeyVisibility" type="button">👁️</button>
+                  <!-- Connected Account Banner -->
+                  <div class="inline-auth-badge" id="inlineRepoAuthBadge" style="display: none;">
+                    <span class="iab-dot"></span>
+                    <span>Publishing to: <b id="inlinePublishAsUser">@username</b> (Token auto-loaded ✓)</span>
                   </div>
-                  <span class="field-hint" style="font-size: 10px; margin-top: 2px;">Stored locally. Needs <code>repo</code> scope.</span>
+
+                  <!-- Prompt to connect if not authenticated -->
+                  <div class="inline-auth-prompt" id="inlineRepoAuthPrompt">
+                    <span>💡 Sign in once to auto-load your token forever.</span>
+                    <button type="button" class="btn-signin-link" id="inlinePromptSignInBtn">Sign In with GitHub</button>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">REPO NAME</label>
+                    <input type="text" id="inlineRepoNameInput" class="git-inline-input" placeholder="e.g. personal-harness" autocomplete="off" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">DESCRIPTION (OPTIONAL)</label>
+                    <input type="text" id="inlineRepoDescInput" class="git-inline-input" placeholder="Short description..." autocomplete="off" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">VISIBILITY</label>
+                    <div class="visibility-pill-group">
+                      <label class="vis-pill active" id="inlineVisPillPublic">
+                        <input type="radio" name="inlineRepoVis" value="public" checked style="display: none;">
+                        <span>🌐 Public</span>
+                      </label>
+                      <label class="vis-pill" id="inlineVisPillPrivate">
+                        <input type="radio" name="inlineRepoVis" value="private" style="display: none;">
+                        <span>🔒 Private</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Manual PAT Group: Hidden when signed in -->
+                  <div class="form-group" id="inlineRepoTokenGroup" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">GITHUB PAT TOKEN</label>
+                    <div class="input-with-action">
+                      <input type="password" id="inlineRepoTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                      <button class="btn-toggle-eye" id="toggleInlineGhKeyVisibility" type="button">👁️</button>
+                    </div>
+                    <span class="field-hint" style="font-size: 10px; margin-top: 2px;">Stored locally. Needs <code>repo</code> scope.</span>
+                  </div>
+
+                  <label class="checkbox-container" style="margin: 6px 0 10px 0; font-size: 11px;">
+                    <input type="checkbox" id="inlineRepoAutoPush" checked />
+                    <span>Auto-commit & push current code</span>
+                  </label>
+                  <button class="btn-publish-github-full" id="confirmInlineCreateRepoBtn">🚀 Create Repo & Push Code</button>
+                  <div id="inlineRepoStatusNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
                 </div>
 
-                <label class="checkbox-container" style="margin: 6px 0 10px 0; font-size: 11px;">
-                  <input type="checkbox" id="inlineRepoAutoPush" checked />
-                  <span>Auto-commit & push current code</span>
-                </label>
-                <button class="btn-publish-github-full" id="confirmInlineCreateRepoBtn">🚀 Create Repo & Push Code</button>
-                <div id="inlineRepoStatusNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
-              </div>
+                <!-- INLINE: Link Existing Remote URL Form -->
+                <div class="git-inline-form-card" id="inlineLinkRemoteCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>LINK REMOTE ORIGIN</span>
+                    <button class="btn-gifc-close" id="closeInlineLinkRemoteBtn">✕</button>
+                  </div>
+                  <input type="text" id="inlineRemoteUrlInput" class="git-inline-input" placeholder="https://github.com/owner/repo.git" autocomplete="off" />
+                  <div class="gifc-actions">
+                    <button class="btn-gifc-primary" id="confirmInlineLinkRemoteBtn">✓ Save Origin URL</button>
+                  </div>
+                  <div id="inlineRemoteNotice" class="pr-result-notice" style="display: none;"></div>
+                </div>
 
-              <!-- INLINE: Link Existing Remote URL Form -->
-              <div class="git-inline-form-card" id="inlineLinkRemoteCard" style="display: none;">
-                <div class="gifc-header">
-                  <span>LINK REMOTE ORIGIN</span>
-                  <button class="btn-gifc-close" id="closeInlineLinkRemoteBtn">✕</button>
-                </div>
-                <input type="text" id="inlineRemoteUrlInput" class="git-inline-input" placeholder="https://github.com/owner/repo.git" autocomplete="off" />
-                <div class="gifc-actions">
-                  <button class="btn-gifc-primary" id="confirmInlineLinkRemoteBtn">✓ Save Origin URL</button>
-                </div>
-                <div id="inlineRemoteNotice" class="pr-result-notice" style="display: none;"></div>
               </div>
             </div>
 
             <!-- Changed Files List -->
             <div class="git-changes-section">
               <div class="gcs-header">
-                <span>CHANGES</span>
+                <span>WORKING CHANGES</span>
                 <span class="count-pill" id="gitChangedCount">0</span>
               </div>
               <div class="git-changes-list" id="gitChangesList">
@@ -788,76 +726,37 @@
             <!-- Commit Form -->
             <div class="git-commit-box">
               <div class="gcb-top">
-                <span class="gcb-label">COMMIT</span>
-                <button class="btn-ai-sparkle-sm" id="gitAiCommitBtn" title="Use AI to generate commit message from changes">
+                <span class="gcb-label">COMMIT MESSAGE</span>
+                <button class="btn-ai-sparkle-sm" id="gitAiCommitBtn" title="Use DeepSeek to auto-write conventional commit message from diff">
                   <span>✨ AI Generate</span>
                 </button>
               </div>
-              <textarea id="gitCommitInput" class="git-commit-textarea" rows="2" placeholder="Commit message (⌘Enter)..."></textarea>
+              <textarea id="gitCommitInput" class="git-commit-textarea" rows="2" placeholder="feat: describe your change..."></textarea>
               <div class="gcb-actions">
                 <button class="btn-commit-primary" id="gitCommitBtn">Commit All</button>
                 <button class="btn-commit-secondary" id="gitPushBtn" title="Push current branch to origin">Push ↑</button>
               </div>
             </div>
 
-            <!-- GitHub Pull Request Section (Collapsible Accordion) -->
-            <details class="git-pr-details git-pr-section" id="gitPrDetails">
-              <summary class="git-pr-summary">
-                <div class="gpr-summary-left">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
-                  <span>PULL REQUEST</span>
-                </div>
-                <svg class="gpr-chevron" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-              </summary>
-              <div class="git-pr-body">
-                <input type="text" id="gitPrTitleInput" class="git-pr-input" placeholder="PR Title: e.g. Add features...">
-                <textarea id="gitPrBodyInput" class="git-pr-textarea" rows="2" placeholder="PR Description (optional)..."></textarea>
-                <div class="gpr-footer">
-                  <span class="gpr-base-hint">into <code id="gitPrBaseDisplay">main</code></span>
-                  <button class="btn-create-pr" id="gitCreatePrBtn">🚀 Open PR</button>
-                </div>
-                <div id="gitPrResultNotice" style="display: none;" class="pr-result-notice"></div>
+            <!-- GitHub Pull Request Section -->
+            <div class="git-pr-section">
+              <div class="gpr-header">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+                <span>GITHUB PULL REQUEST</span>
               </div>
-            </details>
-          </div>
-
-          <!-- Panel 3: Terminal Runner & Auto-Healer -->
-          <div class="studio-tab-panel" id="studioPanelTerminal" style="display: none;">
-            <div class="terminal-actions-bar">
-              <div class="tab-quick-cmds">
-                <button type="button" class="btn-quick-run primary" id="btnRunDevServer" title="Run Dev Server (npm run dev / python / static)">▶ Dev</button>
-                <button type="button" class="btn-quick-run" id="btnRunInstall" title="Install Dependencies (npm install)">📦 Install</button>
-                <button type="button" class="btn-quick-run" id="btnRunTest" title="Run Tests (npm test)">🧪 Test</button>
-                <button type="button" class="btn-quick-run danger" id="btnKillProcess" title="Stop Running Process" disabled>⏹ Stop</button>
-                <button type="button" class="btn-quick-run" id="btnClearTerminal" title="Clear Console">🗑</button>
+              <input type="text" id="gitPrTitleInput" class="git-pr-input" placeholder="PR Title: e.g. Add features...">
+              <textarea id="gitPrBodyInput" class="git-pr-textarea" rows="2" placeholder="PR Description..."></textarea>
+              <div class="gpr-footer">
+                <span class="gpr-base-hint">into <code id="gitPrBaseDisplay">main</code></span>
+                <button class="btn-create-pr" id="gitCreatePrBtn">🚀 Open PR</button>
               </div>
-            </div>
-
-            <!-- Terminal Error Auto-Fix Banner -->
-            <div id="terminalAutoFixBanner" class="terminal-autofix-banner" style="display: none;">
-              <div class="tab-info">
-                <span class="tab-badge">⚠️ Error Detected</span>
-                <span class="tab-msg" id="terminalErrorSnippet">Process exited with non-zero status</span>
-              </div>
-              <button type="button" class="btn-autofix" id="btnAutoFixWithAi">
-                <span>🤖 Fix with AI</span>
-              </button>
-            </div>
-
-            <div class="terminal-console-container" id="terminalConsole">
-              <div class="terminal-log-line info">DeepHarness Terminal Runner Ready. Run a command or click a quick action above.</div>
-            </div>
-
-            <div class="terminal-input-bar">
-              <span class="terminal-prompt-symbol">$</span>
-              <input type="text" id="terminalInputCmd" placeholder="npm run dev, python3 main.py, git log..." autocomplete="off" />
-              <button type="button" id="btnTerminalSubmit">Run</button>
+              <div id="gitPrResultNotice" style="display: none;" class="pr-result-notice"></div>
             </div>
           </div>
         </div>
 
-        <!-- Right Pane: Code Editor, Diff Viewer & Live Web Preview -->
-        <div class="studio-editor-area" id="studioEditorArea">
+        <!-- Right Pane: Code Editor & Diff Viewer -->
+        <div class="studio-editor-area">
           <!-- Normal Code Editor View -->
           <div class="editor-view-container" id="editorViewContainer">
             <div class="code-editor-wrapper">
@@ -874,34 +773,6 @@
                 <span id="editorCharCount">0 chars</span>
                 <span id="editorFileSize">0 B</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Live Web Preview View -->
-          <div class="preview-view-container" id="previewViewContainer" style="display: none;">
-            <div class="preview-toolbar">
-              <div class="pt-left">
-                <button type="button" class="btn-pt-tool" id="previewRefreshBtn" title="Reload Preview">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                </button>
-                <div class="preview-url-bar">
-                  <span class="pub-protocol">preview:</span>
-                  <input type="text" id="previewUrlInput" value="/api/workspace/preview/" placeholder="/api/workspace/preview/ or http://localhost:5173" />
-                </div>
-              </div>
-              <div class="pt-right">
-                <div class="device-toggles">
-                  <button type="button" class="btn-device active" id="previewDeviceDesktop" title="Desktop Viewport (100%)">💻</button>
-                  <button type="button" class="btn-device" id="previewDeviceTablet" title="Tablet Viewport (768px)">📱</button>
-                  <button type="button" class="btn-device" id="previewDeviceMobile" title="Mobile Viewport (375px)">📲</button>
-                </div>
-                <button type="button" class="btn-pt-tool" id="previewExternalBtn" title="Open in Default Browser">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="preview-frame-wrapper" id="previewFrameWrapper">
-              <iframe id="studioPreviewIframe" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
             </div>
           </div>
 
@@ -1205,31 +1076,6 @@
       </div>
     </div>
 
-    <!-- Delete Conversation Confirmation Modal -->
-    <div class="modal-backdrop" id="deleteSessionModal" style="display: none;">
-      <div class="modal-card modal-card-sm">
-        <div class="modal-header">
-          <div class="mh-title">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            <h3>Delete Conversation</h3>
-          </div>
-          <button type="button" class="btn-close-modal" id="closeDeleteSessionModalBtn">✕</button>
-        </div>
-        <div class="modal-body">
-          <p style="font-size: 13px; color: var(--text-main); margin-bottom: 6px;">
-            Are you sure you want to delete <strong id="deleteSessionModalTitle" style="color: #38bdf8;">this conversation</strong>?
-          </p>
-          <p style="font-size: 11px; color: var(--text-dim); line-height: 1.4;">
-            All messages, reasoning traces, and token usage for this conversation will be permanently removed from local SQLite.
-          </p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="cancelDeleteSessionBtn">Cancel</button>
-          <button type="button" class="btn-danger" id="confirmDeleteSessionBtn" style="background: #ef4444; color: #ffffff;">Delete</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Edit Remote URL Modal -->
     <div class="modal-backdrop" id="editRemoteModal" style="display: none;">
       <div class="modal-card modal-card-sm">
@@ -1384,6 +1230,6 @@
 
   </div>
 
-  <script src="app.js?v=5.5"></script>
+  <script src="app.js?v=4.2"></script>
 </body>
 </html>
