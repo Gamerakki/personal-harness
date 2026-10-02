@@ -41,7 +41,8 @@ const state = {
     activeFile: null,
     viewMode: 'editor',
     gitStatus: null
-  }
+  },
+  githubUser: null
 };
 
 // DOM Elements
@@ -147,16 +148,72 @@ const el = {
   treeNewFileBtn: document.getElementById('treeNewFileBtn'),
   treeRefreshBtn: document.getElementById('treeRefreshBtn'),
   fileTreeContainer: document.getElementById('fileTreeContainer'),
+  studioHeaderGithubBtn: document.getElementById('studioHeaderGithubBtn'),
   gitBranchSelect: document.getElementById('gitBranchSelect'),
   gitNewBranchBtn: document.getElementById('gitNewBranchBtn'),
   gitDeleteBranchBtn: document.getElementById('gitDeleteBranchBtn'),
   gitPullBtn: document.getElementById('gitPullBtn'),
   gitRefreshBtn: document.getElementById('gitRefreshBtn'),
+  inlineNewBranchCard: document.getElementById('inlineNewBranchCard'),
+  closeInlineNewBranchBtn: document.getElementById('closeInlineNewBranchBtn'),
+  inlineBranchNameInput: document.getElementById('inlineBranchNameInput'),
+  confirmInlineBranchBtn: document.getElementById('confirmInlineBranchBtn'),
+  inlineBranchNotice: document.getElementById('inlineBranchNotice'),
+  inlineDeleteBranchCard: document.getElementById('inlineDeleteBranchCard'),
+  closeInlineDeleteBranchBtn: document.getElementById('closeInlineDeleteBranchBtn'),
+  inlineDeleteBranchSelect: document.getElementById('inlineDeleteBranchSelect'),
+  inlineDeleteBranchForce: document.getElementById('inlineDeleteBranchForce'),
+  confirmInlineDeleteBranchBtn: document.getElementById('confirmInlineDeleteBranchBtn'),
+  inlineDeleteBranchNotice: document.getElementById('inlineDeleteBranchNotice'),
   gitRepoBar: document.getElementById('gitRepoBar'),
+  ghAccountUnauth: document.getElementById('ghAccountUnauth'),
+  ghAccountAuth: document.getElementById('ghAccountAuth'),
+  ghUserAvatar: document.getElementById('ghUserAvatar'),
+  ghUsername: document.getElementById('ghUsername'),
+  openGhSignInBtn: document.getElementById('openGhSignInBtn'),
+  inlineGhSignInCard: document.getElementById('inlineGhSignInCard'),
+  closeInlineGhSignInBtn: document.getElementById('closeInlineGhSignInBtn'),
+  inlineOpenGhTokenBtn: document.getElementById('inlineOpenGhTokenBtn'),
+  inlineGhSignInTokenInput: document.getElementById('inlineGhSignInTokenInput'),
+  toggleInlineGhSignInVisibility: document.getElementById('toggleInlineGhSignInVisibility'),
+  confirmInlineGhSignInBtn: document.getElementById('confirmInlineGhSignInBtn'),
+  inlineGhSignInNotice: document.getElementById('inlineGhSignInNotice'),
+  ghSignOutBtn: document.getElementById('ghSignOutBtn'),
+  ghSignInModal: document.getElementById('ghSignInModal'),
+  closeGhSignInModalBtn: document.getElementById('closeGhSignInModalBtn'),
+  cancelGhSignInBtn: document.getElementById('cancelGhSignInBtn'),
+  confirmGhSignInBtn: document.getElementById('confirmGhSignInBtn'),
+  openGhTokenPageBtn: document.getElementById('openGhTokenPageBtn'),
+  ghSignInTokenInput: document.getElementById('ghSignInTokenInput'),
+  toggleGhSignInTokenVisibility: document.getElementById('toggleGhSignInTokenVisibility'),
+  ghSignInNotice: document.getElementById('ghSignInNotice'),
+  inlineRepoAuthBadge: document.getElementById('inlineRepoAuthBadge'),
+  inlinePublishAsUser: document.getElementById('inlinePublishAsUser'),
+  inlineRepoAuthPrompt: document.getElementById('inlineRepoAuthPrompt'),
+  inlinePromptSignInBtn: document.getElementById('inlinePromptSignInBtn'),
+  inlineRepoTokenGroup: document.getElementById('inlineRepoTokenGroup'),
   gitLinkedState: document.getElementById('gitLinkedState'),
   gitUnlinkedState: document.getElementById('gitUnlinkedState'),
   gitRepoLink: document.getElementById('gitRepoLink'),
   gitEditRemoteBtn: document.getElementById('gitEditRemoteBtn'),
+  toggleInlineCreateRepoBtn: document.getElementById('toggleInlineCreateRepoBtn'),
+  inlineCreateRepoCard: document.getElementById('inlineCreateRepoCard'),
+  closeInlineCreateRepoBtn: document.getElementById('closeInlineCreateRepoBtn'),
+  inlineRepoNameInput: document.getElementById('inlineRepoNameInput'),
+  inlineRepoDescInput: document.getElementById('inlineRepoDescInput'),
+  inlineVisPillPublic: document.getElementById('inlineVisPillPublic'),
+  inlineVisPillPrivate: document.getElementById('inlineVisPillPrivate'),
+  inlineRepoTokenInput: document.getElementById('inlineRepoTokenInput'),
+  toggleInlineGhKeyVisibility: document.getElementById('toggleInlineGhKeyVisibility'),
+  inlineRepoAutoPush: document.getElementById('inlineRepoAutoPush'),
+  confirmInlineCreateRepoBtn: document.getElementById('confirmInlineCreateRepoBtn'),
+  inlineRepoStatusNotice: document.getElementById('inlineRepoStatusNotice'),
+  toggleInlineLinkRemoteBtn: document.getElementById('toggleInlineLinkRemoteBtn'),
+  inlineLinkRemoteCard: document.getElementById('inlineLinkRemoteCard'),
+  closeInlineLinkRemoteBtn: document.getElementById('closeInlineLinkRemoteBtn'),
+  inlineRemoteUrlInput: document.getElementById('inlineRemoteUrlInput'),
+  confirmInlineLinkRemoteBtn: document.getElementById('confirmInlineLinkRemoteBtn'),
+  inlineRemoteNotice: document.getElementById('inlineRemoteNotice'),
   openCreateRepoModalBtn: document.getElementById('openCreateRepoModalBtn'),
   createRepoModal: document.getElementById('createRepoModal'),
   closeCreateRepoModalBtn: document.getElementById('closeCreateRepoModalBtn'),
@@ -232,6 +289,7 @@ async function init() {
   await loadSessions();
   await loadLifetimeStats();
   await loadSnippets();
+  await checkGitHubAccount();
 
   // If sessions exist, select first, else create new
   if (state.sessions.length > 0) {
@@ -428,17 +486,94 @@ function setupEventListeners() {
   if (el.studioToggleDiffBtn) el.studioToggleDiffBtn.addEventListener('click', () => {
     setStudioViewMode(state.studio.viewMode === 'editor' ? 'diff' : 'editor');
   });
+  if (el.studioHeaderGithubBtn) {
+    el.studioHeaderGithubBtn.addEventListener('click', () => switchStudioTab('git'));
+  }
   if (el.gitRefreshBtn) el.gitRefreshBtn.addEventListener('click', loadGitStatus);
   if (el.gitBranchSelect) el.gitBranchSelect.addEventListener('change', (e) => switchBranch(e.target.value));
-  if (el.gitNewBranchBtn) el.gitNewBranchBtn.addEventListener('click', createNewBranchPrompt);
-  if (el.gitDeleteBranchBtn) el.gitDeleteBranchBtn.addEventListener('click', deleteBranchPrompt);
+  if (el.gitNewBranchBtn) el.gitNewBranchBtn.addEventListener('click', toggleInlineNewBranch);
+  if (el.closeInlineNewBranchBtn) el.closeInlineNewBranchBtn.addEventListener('click', closeInlineNewBranch);
+  if (el.confirmInlineBranchBtn) el.confirmInlineBranchBtn.addEventListener('click', submitInlineBranch);
+  if (el.inlineBranchNameInput) {
+    el.inlineBranchNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitInlineBranch();
+      if (e.key === 'Escape') closeInlineNewBranch();
+    });
+  }
+  if (el.gitDeleteBranchBtn) el.gitDeleteBranchBtn.addEventListener('click', toggleInlineDeleteBranch);
+  if (el.closeInlineDeleteBranchBtn) el.closeInlineDeleteBranchBtn.addEventListener('click', closeInlineDeleteBranch);
+  if (el.confirmInlineDeleteBranchBtn) el.confirmInlineDeleteBranchBtn.addEventListener('click', submitInlineDeleteBranch);
+
+  if (el.toggleInlineCreateRepoBtn) el.toggleInlineCreateRepoBtn.addEventListener('click', openInlineCreateRepo);
+  if (el.closeInlineCreateRepoBtn) el.closeInlineCreateRepoBtn.addEventListener('click', closeInlineCreateRepo);
+  if (el.inlineVisPillPublic) el.inlineVisPillPublic.addEventListener('click', () => setInlineRepoVisibility('public'));
+  if (el.inlineVisPillPrivate) el.inlineVisPillPrivate.addEventListener('click', () => setInlineRepoVisibility('private'));
+  if (el.toggleInlineGhKeyVisibility) {
+    el.toggleInlineGhKeyVisibility.addEventListener('click', () => {
+      if (el.inlineRepoTokenInput) {
+        el.inlineRepoTokenInput.type = el.inlineRepoTokenInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+  if (el.confirmInlineCreateRepoBtn) el.confirmInlineCreateRepoBtn.addEventListener('click', submitInlineCreateRepo);
+
+  if (el.toggleInlineLinkRemoteBtn) el.toggleInlineLinkRemoteBtn.addEventListener('click', openInlineLinkRemote);
+  if (el.closeInlineLinkRemoteBtn) el.closeInlineLinkRemoteBtn.addEventListener('click', closeInlineLinkRemote);
+  if (el.confirmInlineLinkRemoteBtn) el.confirmInlineLinkRemoteBtn.addEventListener('click', submitInlineLinkRemote);
+  if (el.inlineRemoteUrlInput) {
+    el.inlineRemoteUrlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitInlineLinkRemote();
+      if (e.key === 'Escape') closeInlineLinkRemote();
+    });
+  }
+
   if (el.gitPullBtn) el.gitPullBtn.addEventListener('click', pullFromRemote);
   if (el.gitAiCommitBtn) el.gitAiCommitBtn.addEventListener('click', generateAiCommitMessage);
   if (el.gitCommitBtn) el.gitCommitBtn.addEventListener('click', commitGitChanges);
   if (el.gitPushBtn) el.gitPushBtn.addEventListener('click', pushGitBranch);
   if (el.gitCreatePrBtn) el.gitCreatePrBtn.addEventListener('click', createGitHubPullRequest);
 
-  // GitHub Publisher & Remote Modals
+  // GitHub Account Session Listeners
+  if (el.openGhSignInBtn) el.openGhSignInBtn.addEventListener('click', toggleInlineGhSignIn);
+  if (el.inlinePromptSignInBtn) el.inlinePromptSignInBtn.addEventListener('click', toggleInlineGhSignIn);
+  if (el.closeInlineGhSignInBtn) el.closeInlineGhSignInBtn.addEventListener('click', closeInlineGhSignIn);
+  if (el.inlineOpenGhTokenBtn) el.inlineOpenGhTokenBtn.addEventListener('click', openGhTokenPage);
+  if (el.confirmInlineGhSignInBtn) el.confirmInlineGhSignInBtn.addEventListener('click', submitInlineGhSignIn);
+  if (el.toggleInlineGhSignInVisibility) {
+    el.toggleInlineGhSignInVisibility.addEventListener('click', () => {
+      if (el.inlineGhSignInTokenInput) {
+        el.inlineGhSignInTokenInput.type = el.inlineGhSignInTokenInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+  if (el.inlineGhSignInTokenInput) {
+    el.inlineGhSignInTokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitInlineGhSignIn();
+      if (e.key === 'Escape') closeInlineGhSignIn();
+    });
+  }
+
+  // Modal fallbacks
+  if (el.closeGhSignInModalBtn) el.closeGhSignInModalBtn.addEventListener('click', closeGhSignInModal);
+  if (el.cancelGhSignInBtn) el.cancelGhSignInBtn.addEventListener('click', closeGhSignInModal);
+  if (el.confirmGhSignInBtn) el.confirmGhSignInBtn.addEventListener('click', submitGhSignIn);
+  if (el.openGhTokenPageBtn) el.openGhTokenPageBtn.addEventListener('click', openGhTokenPage);
+  if (el.ghSignOutBtn) el.ghSignOutBtn.addEventListener('click', submitGhSignOut);
+  if (el.toggleGhSignInTokenVisibility) {
+    el.toggleGhSignInTokenVisibility.addEventListener('click', () => {
+      if (el.ghSignInTokenInput) {
+        el.ghSignInTokenInput.type = el.ghSignInTokenInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+  if (el.ghSignInTokenInput) {
+    el.ghSignInTokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitGhSignIn();
+      if (e.key === 'Escape') closeGhSignInModal();
+    });
+  }
+
+  // GitHub Publisher & Remote Modals (also retained)
   if (el.openCreateRepoModalBtn) el.openCreateRepoModalBtn.addEventListener('click', openCreateRepoModal);
   if (el.closeCreateRepoModalBtn) el.closeCreateRepoModalBtn.addEventListener('click', closeCreateRepoModal);
   if (el.cancelCreateRepoBtn) el.cancelCreateRepoBtn.addEventListener('click', closeCreateRepoModal);
@@ -2578,6 +2713,22 @@ async function loadGitBranches(currentBranch) {
         el.gitBranchSelect.appendChild(opt);
       });
     }
+
+    // Also populate inline delete branch select
+    if (el.inlineDeleteBranchSelect) {
+      el.inlineDeleteBranchSelect.innerHTML = '';
+      const otherBranches = state.studio.branches.filter(b => b !== state.studio.currentBranch);
+      if (otherBranches.length === 0) {
+        el.inlineDeleteBranchSelect.innerHTML = '<option value="">(No other branches)</option>';
+      } else {
+        otherBranches.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b;
+          opt.textContent = `🌿 ${b}`;
+          el.inlineDeleteBranchSelect.appendChild(opt);
+        });
+      }
+    }
   } catch (e) {
     console.error('Failed to load branches:', e);
   }
@@ -2607,26 +2758,35 @@ async function switchBranch(branchName) {
   }
 }
 
-function createNewBranchPrompt() {
-  if (el.createBranchModal) {
-    if (el.newBranchNameInput) el.newBranchNameInput.value = '';
-    if (el.createBranchStatusNotice) el.createBranchStatusNotice.style.display = 'none';
-    el.createBranchModal.style.display = 'flex';
-    setTimeout(() => el.newBranchNameInput?.focus(), 50);
-  }
-}
-
-function closeCreateBranchModal() {
-  if (el.createBranchModal) el.createBranchModal.style.display = 'none';
-}
-
-async function submitCreateBranch() {
-  const name = el.newBranchNameInput?.value?.trim();
-  if (!name) {
-    showBranchNotice('Please enter a branch name', 'error');
+// INLINE: New Branch Drawer
+function toggleInlineNewBranch() {
+  if (!el.inlineNewBranchCard) {
+    createNewBranchPrompt();
     return;
   }
-  showBranchNotice('Creating and switching to branch...', 'info');
+  const isHidden = el.inlineNewBranchCard.style.display === 'none';
+  if (isHidden) {
+    if (el.inlineBranchNameInput) el.inlineBranchNameInput.value = '';
+    if (el.inlineBranchNotice) el.inlineBranchNotice.style.display = 'none';
+    if (el.inlineDeleteBranchCard) el.inlineDeleteBranchCard.style.display = 'none';
+    el.inlineNewBranchCard.style.display = 'block';
+    setTimeout(() => el.inlineBranchNameInput?.focus(), 50);
+  } else {
+    el.inlineNewBranchCard.style.display = 'none';
+  }
+}
+
+function closeInlineNewBranch() {
+  if (el.inlineNewBranchCard) el.inlineNewBranchCard.style.display = 'none';
+}
+
+async function submitInlineBranch() {
+  const name = el.inlineBranchNameInput?.value?.trim();
+  if (!name) {
+    showInlineBranchNotice('Please enter a branch name', 'error');
+    return;
+  }
+  showInlineBranchNotice('Creating and switching to branch...', 'info');
   try {
     const res = await fetch('/api/git/branch', {
       method: 'POST',
@@ -2635,52 +2795,54 @@ async function submitCreateBranch() {
     });
     const data = await res.json();
     if (data.success) {
-      closeCreateBranchModal();
+      closeInlineNewBranch();
       showToast(`Branch "${data.branch}" created & checked out!`, 'success');
       loadGitStatus();
       loadFileTree(state.studio.currentPath);
     } else {
-      showBranchNotice(data.error || 'Failed to create branch', 'error');
+      showInlineBranchNotice(data.error || 'Failed to create branch', 'error');
     }
   } catch (e) {
-    showBranchNotice(e.message, 'error');
+    showInlineBranchNotice(e.message, 'error');
   }
 }
 
-function showBranchNotice(msg, type) {
-  if (!el.createBranchStatusNotice) return;
-  el.createBranchStatusNotice.textContent = msg;
-  el.createBranchStatusNotice.className = `pr-result-notice ${type}`;
-  el.createBranchStatusNotice.style.display = 'block';
+function showInlineBranchNotice(msg, type) {
+  if (!el.inlineBranchNotice) return;
+  el.inlineBranchNotice.textContent = msg;
+  el.inlineBranchNotice.className = `pr-result-notice ${type}`;
+  el.inlineBranchNotice.style.display = 'block';
 }
 
-function deleteBranchPrompt() {
-  const branches = (state.studio.branches || []).filter(b => b !== state.studio.currentBranch);
-  if (branches.length === 0) {
-    showToast('No other branches available to delete.', 'info');
+// INLINE: Delete Branch Drawer
+function toggleInlineDeleteBranch() {
+  if (!el.inlineDeleteBranchCard) {
+    deleteBranchPrompt();
     return;
   }
-  if (el.deleteBranchSelect) {
-    el.deleteBranchSelect.innerHTML = '';
-    branches.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b;
-      opt.textContent = b;
-      el.deleteBranchSelect.appendChild(opt);
-    });
+  const isHidden = el.inlineDeleteBranchCard.style.display === 'none';
+  if (isHidden) {
+    const otherBranches = (state.studio.branches || []).filter(b => b !== state.studio.currentBranch);
+    if (otherBranches.length === 0) {
+      showToast('No other branches available to delete.', 'info');
+      return;
+    }
+    if (el.inlineDeleteBranchForce) el.inlineDeleteBranchForce.checked = false;
+    if (el.inlineDeleteBranchNotice) el.inlineDeleteBranchNotice.style.display = 'none';
+    if (el.inlineNewBranchCard) el.inlineNewBranchCard.style.display = 'none';
+    el.inlineDeleteBranchCard.style.display = 'block';
+  } else {
+    el.inlineDeleteBranchCard.style.display = 'none';
   }
-  if (el.deleteBranchForce) el.deleteBranchForce.checked = false;
-  if (el.deleteBranchStatusNotice) el.deleteBranchStatusNotice.style.display = 'none';
-  if (el.deleteBranchModal) el.deleteBranchModal.style.display = 'flex';
 }
 
-function closeDeleteBranchModal() {
-  if (el.deleteBranchModal) el.deleteBranchModal.style.display = 'none';
+function closeInlineDeleteBranch() {
+  if (el.inlineDeleteBranchCard) el.inlineDeleteBranchCard.style.display = 'none';
 }
 
-async function submitDeleteBranch() {
-  const name = el.deleteBranchSelect?.value;
-  const force = el.deleteBranchForce?.checked || false;
+async function submitInlineDeleteBranch() {
+  const name = el.inlineDeleteBranchSelect?.value;
+  const force = el.inlineDeleteBranchForce?.checked || false;
   if (!name) return;
 
   try {
@@ -2691,14 +2853,14 @@ async function submitDeleteBranch() {
     });
     const data = await res.json();
     if (data.success) {
-      closeDeleteBranchModal();
+      closeInlineDeleteBranch();
       showToast(`Deleted branch "${name}"!`, 'success');
       loadGitStatus();
     } else {
-      if (el.deleteBranchStatusNotice) {
-        el.deleteBranchStatusNotice.textContent = data.error || 'Failed to delete branch';
-        el.deleteBranchStatusNotice.className = 'pr-result-notice error';
-        el.deleteBranchStatusNotice.style.display = 'block';
+      if (el.inlineDeleteBranchNotice) {
+        el.inlineDeleteBranchNotice.textContent = data.error || 'Failed to delete branch';
+        el.inlineDeleteBranchNotice.className = 'pr-result-notice error';
+        el.inlineDeleteBranchNotice.style.display = 'block';
       }
     }
   } catch (e) {
@@ -2706,109 +2868,264 @@ async function submitDeleteBranch() {
   }
 }
 
-function openCreateRepoModal() {
-  if (!el.createRepoModal) return;
-  const root = state.studio.root || '';
-  const defaultName = root.split('/').filter(Boolean).pop() || 'my-project';
-  if (el.newRepoNameInput) el.newRepoNameInput.value = defaultName;
-  if (el.newRepoDescInput) el.newRepoDescInput.value = '';
-  if (el.modalGhTokenInput && state.githubToken) {
-    el.modalGhTokenInput.value = state.githubToken;
+// INLINE: GitHub Repository Publisher
+function openInlineCreateRepo() {
+  if (el.inlineCreateRepoCard) {
+    const root = state.studio.root || '';
+    const defaultName = root.split('/').filter(Boolean).pop() || 'personal-harness';
+    if (el.inlineRepoNameInput) el.inlineRepoNameInput.value = defaultName;
+    if (el.inlineRepoDescInput) el.inlineRepoDescInput.value = '';
+    // Token is auto-loaded from DB when user is signed in — no need to pre-fill input
+    setInlineRepoVisibility('public');
+    if (el.inlineRepoStatusNotice) el.inlineRepoStatusNotice.style.display = 'none';
+    if (el.inlineLinkRemoteCard) el.inlineLinkRemoteCard.style.display = 'none';
+    el.inlineCreateRepoCard.style.display = 'block';
+    setTimeout(() => el.inlineRepoNameInput?.focus(), 50);
+  } else {
+    openCreateRepoModal();
   }
-  setRepoVisibilityPill('public');
-  if (el.createRepoStatusNotice) el.createRepoStatusNotice.style.display = 'none';
-  el.createRepoModal.style.display = 'flex';
-  setTimeout(() => el.newRepoNameInput?.focus(), 50);
 }
 
-function closeCreateRepoModal() {
-  if (el.createRepoModal) el.createRepoModal.style.display = 'none';
+function closeInlineCreateRepo() {
+  if (el.inlineCreateRepoCard) el.inlineCreateRepoCard.style.display = 'none';
 }
 
-function setRepoVisibilityPill(val) {
+function setInlineRepoVisibility(val) {
   state.studio.newRepoVisibility = val;
-  if (el.visPillPublic) el.visPillPublic.classList.toggle('active', val === 'public');
-  if (el.visPillPrivate) el.visPillPrivate.classList.toggle('active', val === 'private');
+  if (el.inlineVisPillPublic) el.inlineVisPillPublic.classList.toggle('active', val === 'public');
+  if (el.inlineVisPillPrivate) el.inlineVisPillPrivate.classList.toggle('active', val === 'private');
 }
 
-async function submitCreateRepo() {
-  const name = el.newRepoNameInput?.value?.trim();
-  const desc = el.newRepoDescInput?.value?.trim() || '';
-  const token = el.modalGhTokenInput?.value?.trim() || state.githubToken || '';
-  const isPrivate = state.studio.newRepoVisibility === 'private';
-  const autoPush = el.newRepoAutoPush?.checked !== false;
+// GitHub Account Session Management
+async function checkGitHubAccount() {
+  try {
+    const res = await fetch('/api/github/account');
+    const data = await res.json();
+    if (data.authenticated && data.user) {
+      state.githubUser = data.user;
+      state.githubToken = true;
 
-  if (!name) {
-    showCreateRepoNotice('Please enter a repository name', 'error');
-    return;
+      if (el.ghAccountUnauth) el.ghAccountUnauth.style.display = 'none';
+      if (el.ghAccountAuth) el.ghAccountAuth.style.display = 'flex';
+      if (el.ghUsername) el.ghUsername.textContent = `@${data.user.login}`;
+      if (el.ghUserAvatar) {
+        if (data.user.avatar_url) {
+          el.ghUserAvatar.src = data.user.avatar_url;
+          el.ghUserAvatar.style.display = 'block';
+        } else {
+          el.ghUserAvatar.style.display = 'none';
+        }
+      }
+
+      // Update inline publisher to be 100% tokenless
+      if (el.inlineRepoAuthBadge) el.inlineRepoAuthBadge.style.display = 'flex';
+      if (el.inlineRepoAuthPrompt) el.inlineRepoAuthPrompt.style.display = 'none';
+      if (el.inlinePublishAsUser) el.inlinePublishAsUser.textContent = `@${data.user.login}`;
+      if (el.inlineRepoTokenGroup) el.inlineRepoTokenGroup.style.display = 'none';
+      if (el.inlineGhSignInCard) el.inlineGhSignInCard.style.display = 'none';
+    } else {
+      state.githubUser = null;
+      if (el.ghAccountUnauth) el.ghAccountUnauth.style.display = 'flex';
+      if (el.ghAccountAuth) el.ghAccountAuth.style.display = 'none';
+      if (el.inlineRepoAuthBadge) el.inlineRepoAuthBadge.style.display = 'none';
+      if (el.inlineRepoAuthPrompt) el.inlineRepoAuthPrompt.style.display = 'flex';
+      if (el.inlineRepoTokenGroup) el.inlineRepoTokenGroup.style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Failed to check GitHub account:', e);
   }
+}
 
+// INLINE: Zero-Modal GitHub Sign-In Drawer
+function toggleInlineGhSignIn() {
+  if (!el.inlineGhSignInCard) return;
+  const isHidden = el.inlineGhSignInCard.style.display === 'none';
+  if (isHidden) {
+    if (el.inlineGhSignInTokenInput) el.inlineGhSignInTokenInput.value = '';
+    if (el.inlineGhSignInNotice) el.inlineGhSignInNotice.style.display = 'none';
+    if (el.inlineCreateRepoCard) el.inlineCreateRepoCard.style.display = 'none';
+    if (el.inlineLinkRemoteCard) el.inlineLinkRemoteCard.style.display = 'none';
+    if (el.inlineNewBranchCard) el.inlineNewBranchCard.style.display = 'none';
+    if (el.inlineDeleteBranchCard) el.inlineDeleteBranchCard.style.display = 'none';
+    el.inlineGhSignInCard.style.display = 'block';
+    setTimeout(() => el.inlineGhSignInTokenInput?.focus(), 50);
+  } else {
+    el.inlineGhSignInCard.style.display = 'none';
+  }
+}
+
+function closeInlineGhSignIn() {
+  if (el.inlineGhSignInCard) el.inlineGhSignInCard.style.display = 'none';
+}
+
+function showInlineGhSignInNotice(msg, type) {
+  if (!el.inlineGhSignInNotice) return;
+  el.inlineGhSignInNotice.textContent = msg;
+  el.inlineGhSignInNotice.className = `pr-result-notice ${type}`;
+  el.inlineGhSignInNotice.style.display = 'block';
+}
+
+async function submitInlineGhSignIn() {
+  const token = el.inlineGhSignInTokenInput?.value?.trim();
   if (!token) {
-    showCreateRepoNotice('Please enter your GitHub Personal Access Token (PAT)', 'error');
-    if (el.modalGhTokenInput) el.modalGhTokenInput.focus();
+    showInlineGhSignInNotice('Please enter or paste your GitHub Personal Access Token', 'error');
+    if (el.inlineGhSignInTokenInput) el.inlineGhSignInTokenInput.focus();
     return;
   }
 
-  showCreateRepoNotice('Creating GitHub repository & syncing code...', 'info');
-  if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = true;
+  showInlineGhSignInNotice('Verifying token with GitHub & saving...', 'info');
+  if (el.confirmInlineGhSignInBtn) el.confirmInlineGhSignInBtn.disabled = true;
 
   try {
-    // If token provided, save to settings for future actions
-    if (token) {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'github_token', value: token })
-      });
-      state.githubToken = token;
-      if (el.settingGitHubToken) el.settingGitHubToken.value = token;
-    }
+    const res = await fetch('/api/github/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+    if (el.confirmInlineGhSignInBtn) el.confirmInlineGhSignInBtn.disabled = false;
 
+    if (data.success && data.user) {
+      showToast(`🎉 Signed in as @${data.user.login}! Token saved permanently.`, 'success');
+      closeInlineGhSignIn();
+      await checkGitHubAccount();
+      loadGitStatus();
+    } else {
+      showInlineGhSignInNotice(data.error || 'Failed to authenticate with GitHub.', 'error');
+    }
+  } catch (e) {
+    if (el.confirmInlineGhSignInBtn) el.confirmInlineGhSignInBtn.disabled = false;
+    showInlineGhSignInNotice(e.message, 'error');
+  }
+}
+
+function openGhSignInModal() {
+  toggleInlineGhSignIn();
+}
+
+function closeGhSignInModal() {
+  closeInlineGhSignIn();
+  if (el.ghSignInModal) el.ghSignInModal.style.display = 'none';
+}
+
+function openGhTokenPage() {
+  const url = 'https://github.com/settings/tokens/new?description=DeepHarness%20Personal%20Mac&scopes=repo,read:user,workflow';
+  fetch('/api/system/open-external', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  }).catch(() => {});
+  window.open(url, '_blank');
+  showInlineGhSignInNotice('Opening GitHub in browser. Generate token, copy it, and paste below!', 'info');
+  showGhSignInNotice('Opening GitHub in browser. Generate token, copy it, and paste below!', 'info');
+  setTimeout(() => {
+    el.inlineGhSignInTokenInput?.focus();
+    el.ghSignInTokenInput?.focus();
+  }, 100);
+}
+
+async function submitGhSignIn() {
+  return submitInlineGhSignIn();
+}
+
+function showGhSignInNotice(msg, type) {
+  showInlineGhSignInNotice(msg, type);
+  if (!el.ghSignInNotice) return;
+  el.ghSignInNotice.textContent = msg;
+  el.ghSignInNotice.className = `pr-result-notice ${type}`;
+  el.ghSignInNotice.style.display = 'block';
+}
+
+async function submitGhSignOut() {
+  if (!confirm('Are you sure you want to disconnect this GitHub account from DeepHarness?')) return;
+  try {
+    await fetch('/api/github/logout', { method: 'POST' });
+    showToast('GitHub account disconnected.', 'info');
+    await checkGitHubAccount();
+    loadGitStatus();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function submitInlineCreateRepo() {
+  const name = el.inlineRepoNameInput?.value?.trim();
+  const desc = el.inlineRepoDescInput?.value?.trim() || '';
+  const manualToken = el.inlineRepoTokenInput?.value?.trim();
+  const isPrivate = state.studio.newRepoVisibility === 'private';
+  const autoPush = el.inlineRepoAutoPush?.checked !== false;
+
+  if (!name) {
+    showInlineRepoNotice('Please enter a repository name', 'error');
+    return;
+  }
+
+  if (!state.githubUser && !manualToken) {
+    showInlineRepoNotice('Please sign in with GitHub or enter a token below', 'error');
+    toggleInlineGhSignIn();
+    return;
+  }
+
+  showInlineRepoNotice('🚀 Creating GitHub repository & syncing code...', 'info');
+  if (el.confirmInlineCreateRepoBtn) el.confirmInlineCreateRepoBtn.disabled = true;
+
+  try {
     const res = await fetch('/api/github/create-repo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description: desc, isPrivate, autoPush, token })
+      body: JSON.stringify({
+        name,
+        description: desc,
+        isPrivate,
+        autoPush,
+        token: manualToken || undefined
+      })
     });
     const data = await res.json();
-    if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = false;
+    if (el.confirmInlineCreateRepoBtn) el.confirmInlineCreateRepoBtn.disabled = false;
 
     if (data.success) {
       showToast(`🎉 GitHub repo "${data.fullName}" created & published!`, 'success');
-      closeCreateRepoModal();
+      closeInlineCreateRepo();
       loadGitStatus();
       loadFileTree(state.studio.currentPath);
     } else {
-      showCreateRepoNotice(data.error || 'Failed to create GitHub repository.', 'error');
+      showInlineRepoNotice(data.error || 'Failed to create GitHub repository.', 'error');
     }
   } catch (e) {
-    if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = false;
-    showCreateRepoNotice(e.message, 'error');
+    if (el.confirmInlineCreateRepoBtn) el.confirmInlineCreateRepoBtn.disabled = false;
+    showInlineRepoNotice(e.message, 'error');
   }
 }
 
-function showCreateRepoNotice(msg, type) {
-  if (!el.createRepoStatusNotice) return;
-  el.createRepoStatusNotice.textContent = msg;
-  el.createRepoStatusNotice.className = `pr-result-notice ${type}`;
-  el.createRepoStatusNotice.style.display = 'block';
+function showInlineRepoNotice(msg, type) {
+  if (!el.inlineRepoStatusNotice) return;
+  el.inlineRepoStatusNotice.textContent = msg;
+  el.inlineRepoStatusNotice.className = `pr-result-notice ${type}`;
+  el.inlineRepoStatusNotice.style.display = 'block';
 }
 
-function openEditRemoteModal() {
-  if (!el.editRemoteModal) return;
-  if (el.editRemoteUrlInput) {
-    el.editRemoteUrlInput.value = state.studio.gitStatus?.remoteUrl || '';
+// INLINE: Link Remote URL
+function openInlineLinkRemote() {
+  if (el.inlineLinkRemoteCard) {
+    if (el.inlineRemoteUrlInput) {
+      el.inlineRemoteUrlInput.value = state.studio.gitStatus?.remoteUrl || '';
+    }
+    if (el.inlineRemoteNotice) el.inlineRemoteNotice.style.display = 'none';
+    if (el.inlineCreateRepoCard) el.inlineCreateRepoCard.style.display = 'none';
+    el.inlineLinkRemoteCard.style.display = 'block';
+    setTimeout(() => el.inlineRemoteUrlInput?.focus(), 50);
+  } else {
+    openEditRemoteModal();
   }
-  if (el.editRemoteStatusNotice) el.editRemoteStatusNotice.style.display = 'none';
-  el.editRemoteModal.style.display = 'flex';
-  setTimeout(() => el.editRemoteUrlInput?.focus(), 50);
 }
 
-function closeEditRemoteModal() {
-  if (el.editRemoteModal) el.editRemoteModal.style.display = 'none';
+function closeInlineLinkRemote() {
+  if (el.inlineLinkRemoteCard) el.inlineLinkRemoteCard.style.display = 'none';
 }
 
-async function submitEditRemote() {
-  const url = el.editRemoteUrlInput?.value?.trim();
+async function submitInlineLinkRemote() {
+  const url = el.inlineRemoteUrlInput?.value?.trim();
   if (!url) return;
   try {
     const res = await fetch('/api/git/remote', {
@@ -2818,19 +3135,66 @@ async function submitEditRemote() {
     });
     const data = await res.json();
     if (data.success) {
-      closeEditRemoteModal();
-      showToast('Remote origin updated!', 'success');
+      closeInlineLinkRemote();
+      showToast('Remote origin linked successfully!', 'success');
       loadGitStatus();
     } else {
-      if (el.editRemoteStatusNotice) {
-        el.editRemoteStatusNotice.textContent = data.error || 'Failed to update remote';
-        el.editRemoteStatusNotice.className = 'pr-result-notice error';
-        el.editRemoteStatusNotice.style.display = 'block';
+      if (el.inlineRemoteNotice) {
+        el.inlineRemoteNotice.textContent = data.error || 'Failed to update remote';
+        el.inlineRemoteNotice.className = 'pr-result-notice error';
+        el.inlineRemoteNotice.style.display = 'block';
       }
     }
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+// Modal Fallbacks for Git Branch & Repo
+function createNewBranchPrompt() {
+  toggleInlineNewBranch();
+}
+function closeCreateBranchModal() {
+  if (el.createBranchModal) el.createBranchModal.style.display = 'none';
+}
+async function submitCreateBranch() {
+  submitInlineBranch();
+}
+function showBranchNotice(msg, type) {
+  showInlineBranchNotice(msg, type);
+}
+function deleteBranchPrompt() {
+  toggleInlineDeleteBranch();
+}
+function closeDeleteBranchModal() {
+  if (el.deleteBranchModal) el.deleteBranchModal.style.display = 'none';
+}
+async function submitDeleteBranch() {
+  submitInlineDeleteBranch();
+}
+function openCreateRepoModal() {
+  openInlineCreateRepo();
+}
+function closeCreateRepoModal() {
+  if (el.createRepoModal) el.createRepoModal.style.display = 'none';
+}
+function setRepoVisibilityPill(val) {
+  setInlineRepoVisibility(val);
+}
+async function submitCreateRepo() {
+  submitInlineCreateRepo();
+}
+function showCreateRepoNotice(msg, type) {
+  showInlineRepoNotice(msg, type);
+}
+function openEditRemoteModal() {
+  openInlineLinkRemote();
+}
+function closeEditRemoteModal() {
+  if (el.editRemoteModal) el.editRemoteModal.style.display = 'none';
+}
+async function submitEditRemote() {
+  submitInlineLinkRemote();
 }
 
 async function initializeGitRepo() {
@@ -2906,6 +3270,11 @@ async function commitGitChanges() {
 }
 
 async function pushGitBranch() {
+  if (!state.studio.gitStatus?.remoteUrl) {
+    showToast('No GitHub repository linked yet! Please create or link a repo below.', 'warning');
+    openInlineCreateRepo();
+    return;
+  }
   showToast('Pushing branch to remote origin...', 'info');
   try {
     const res = await fetch('/api/git/push', { method: 'POST' });
@@ -2915,6 +3284,9 @@ async function pushGitBranch() {
       loadGitStatus();
     } else {
       showToast(data.error || 'Push failed (check remote origin credentials)', 'error');
+      if (data.error && (data.error.includes('origin') || data.error.includes('credentials') || data.error.includes('Authentication') || data.error.includes('fatal:'))) {
+        openInlineCreateRepo();
+      }
     }
   } catch (e) {
     showToast(e.message, 'error');

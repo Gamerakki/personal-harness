@@ -8,6 +8,7 @@ PORT=4173
 URL="http://127.0.0.1:$PORT"
 
 echo "⚡ Restarting DeepSeek AI Harness Server with latest code..."
+kill -9 $(lsof -ti :$PORT) 2>/dev/null || true
 pkill -f "node server.js" 2>/dev/null || true
 sleep 0.5
 

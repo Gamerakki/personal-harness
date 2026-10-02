@@ -7,7 +7,8 @@ const crypto = require('node:crypto');
 const { execFile, execSync } = require('node:child_process');
 
 const PORT = process.env.PORT || 4173;
-const DATA_DIR = path.join(__dirname, 'data');
+const HOME_DIR = process.env.HOME || require('node:os').homedir();
+const DATA_DIR = path.join(HOME_DIR, '.deepharness', 'data');
 const EXPORT_DIR = path.join(__dirname, 'exported_code');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -193,6 +194,15 @@ function setSetting(key, value) {
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
 }
 
+// Helper to get the correct GitHub Authorization header value
+// Classic tokens (ghp_) use "token <token>", fine-grained (github_pat_) use "Bearer <token>"
+function getGitHubAuthHeader(token) {
+  if (token.startsWith('ghp_') || token.startsWith('gho_') || token.startsWith('ghu_') || token.startsWith('ghs_') || token.startsWith('ghr_')) {
+    return `token ${token}`;
+  }
+  return `Bearer ${token}`;
+}
+
 // Ensure default settings exist
 if (!getSetting('active_model')) setSetting('active_model', 'deepseek-reasoner');
 if (!getSetting('deepseek_endpoint')) setSetting('deepseek_endpoint', 'https://api.deepseek.com');
@@ -351,7 +361,9 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname === '/api/settings' && method === 'POST') {
         const body = await parseJsonBody(req);
+        const protectedKeys = ['github_token', 'github_user'];
         for (const [key, value] of Object.entries(body)) {
+          if (protectedKeys.includes(key)) continue; // Managed by /api/github/login & /logout
           setSetting(key, String(value));
         }
         return sendJson(res, 200, { success: true });
@@ -470,9 +482,7 @@ const server = http.createServer(async (req, res) => {
             return sendJson(res, 400, { error: 'Specified path is not a valid directory' });
           }
         }
-        if (body.github_token !== undefined) {
-          setSetting('github_token', body.github_token.trim());
-        }
+        // github_token is managed exclusively by /api/github/login & /logout
         return sendJson(res, 200, {
           success: true,
           root: getWorkspaceRoot(),
@@ -844,13 +854,17 @@ const server = http.createServer(async (req, res) => {
         const repoName = name.trim().replace(/[^a-zA-Z0-9._-]/g, '-');
 
         try {
+          const dbToken = getSetting('github_token');
+          console.log(`[create-repo] customToken: ${customToken ? customToken.substring(0, 8) + '...' : 'none'}`);
+          console.log(`[create-repo] dbToken: ${dbToken ? dbToken.substring(0, 8) + '...' : 'none'} (type: ${typeof dbToken})`);
+          console.log(`[create-repo] resolved token: ${token ? token.substring(0, 8) + '...' : 'none'} (type: ${typeof token})`);
           const ghRes = await fetch('https://api.github.com/user/repos', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'Authorization': getGitHubAuthHeader(token),
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json',
-              'User-Agent': 'DeepHarness-AI-Studio'
+              'User-Agent': 'DeepHarness-Desktop'
             },
             body: JSON.stringify({
               name: repoName,
@@ -862,6 +876,7 @@ const server = http.createServer(async (req, res) => {
 
           const ghData = await ghRes.json();
           if (!ghRes.ok) {
+            console.error(`[create-repo] GitHub API error ${ghRes.status}:`, JSON.stringify(ghData));
             return sendJson(res, ghRes.status, {
               error: ghData.message || 'GitHub repo creation failed',
               errors: ghData.errors
@@ -938,9 +953,9 @@ const server = http.createServer(async (req, res) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+              'Authorization': getGitHubAuthHeader(token),
               'Accept': 'application/vnd.github+json',
-              'User-Agent': 'DeepHarness-Desktop-App'
+              'User-Agent': 'DeepHarness-Desktop'
             },
             body: JSON.stringify({
               title,
@@ -968,6 +983,98 @@ const server = http.createServer(async (req, res) => {
         } catch (err) {
           return sendJson(res, 500, { error: `Failed to contact GitHub API: ${err.message}` });
         }
+      }
+
+      if (pathname === '/api/github/account' && method === 'GET') {
+        const token = getSetting('github_token');
+        if (!token) {
+          return sendJson(res, 200, { authenticated: false });
+        }
+        try {
+          const ghRes = await fetch('https://api.github.com/user', {
+            headers: {
+              'Authorization': getGitHubAuthHeader(token),
+              'User-Agent': 'DeepHarness-Desktop',
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if (ghRes.ok) {
+            const user = await ghRes.json();
+            const userData = {
+              login: user.login,
+              name: user.name || user.login,
+              avatar_url: user.avatar_url,
+              html_url: user.html_url,
+              public_repos: user.public_repos
+            };
+            setSetting('github_user', JSON.stringify(userData));
+            return sendJson(res, 200, { authenticated: true, user: userData });
+          } else {
+            // Token might be revoked or invalid
+            return sendJson(res, 200, { authenticated: false, error: 'GitHub token is no longer valid' });
+          }
+        } catch (err) {
+          // If offline or network issue, fallback to cached user if available
+          const cachedUser = getSetting('github_user');
+          if (cachedUser) {
+            try {
+              return sendJson(res, 200, { authenticated: true, user: JSON.parse(cachedUser), offline: true });
+            } catch (e) {}
+          }
+          return sendJson(res, 200, { authenticated: false, error: err.message });
+        }
+      }
+
+      if (pathname === '/api/github/login' && method === 'POST') {
+        const body = await parseJsonBody(req);
+        const { token } = body;
+        if (!token || !token.trim()) {
+          return sendJson(res, 400, { error: 'Personal Access Token required' });
+        }
+        const cleanToken = token.trim();
+        try {
+          const ghRes = await fetch('https://api.github.com/user', {
+            headers: {
+              'Authorization': getGitHubAuthHeader(cleanToken),
+              'User-Agent': 'DeepHarness-Desktop',
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if (!ghRes.ok) {
+            const errData = await ghRes.json().catch(() => ({}));
+            return sendJson(res, 401, {
+              error: errData.message || 'Invalid GitHub token. Please verify scopes and token value.'
+            });
+          }
+          const user = await ghRes.json();
+          const userData = {
+            login: user.login,
+            name: user.name || user.login,
+            avatar_url: user.avatar_url,
+            html_url: user.html_url,
+            public_repos: user.public_repos
+          };
+          setSetting('github_token', cleanToken);
+          setSetting('github_user', JSON.stringify(userData));
+          return sendJson(res, 200, { success: true, user: userData });
+        } catch (err) {
+          return sendJson(res, 500, { error: `Authentication failed: ${err.message}` });
+        }
+      }
+
+      if (pathname === '/api/github/logout' && method === 'POST') {
+        db.prepare("DELETE FROM settings WHERE key IN ('github_token', 'github_user')").run();
+        return sendJson(res, 200, { success: true });
+      }
+
+      if (pathname === '/api/system/open-external' && method === 'POST') {
+        const body = await parseJsonBody(req);
+        const { url } = body;
+        if (!url) return sendJson(res, 400, { error: 'URL required' });
+        execFile('open', [url], (err) => {
+          if (err) console.error('Failed to open external url:', err);
+        });
+        return sendJson(res, 200, { success: true });
       }
 
       if (pathname === '/api/system/restart' && method === 'POST') {
@@ -1448,13 +1555,23 @@ const server = http.createServer(async (req, res) => {
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       const ext = path.extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, { 'Content-Type': contentType });
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       fs.createReadStream(filePath).pipe(res);
     } else {
       // Fallback to index.html for SPA routes
       const indexPath = path.join(PUBLIC_DIR, 'index.html');
       if (fs.existsSync(indexPath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
         fs.createReadStream(indexPath).pipe(res);
       } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });

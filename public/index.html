@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepHarness — DeepSeek Studio</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4.2">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -436,6 +436,10 @@
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
             <span id="diffBtnLabel">Diff</span>
           </button>
+          <button class="btn-studio-action ghost" id="studioHeaderGithubBtn" title="Open Git & GitHub Manager">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            <span>GitHub</span>
+          </button>
           <button class="btn-close-studio" id="closeStudioBtn" title="Close Studio">✕</button>
         </div>
       </div>
@@ -478,6 +482,7 @@
           <div class="studio-tab-panel" id="studioPanelGit" style="display: none;">
             <!-- Branch & Remote Header -->
             <div class="git-header-card">
+              <!-- Branch Selector Row -->
               <div class="ghc-row">
                 <span class="ghc-label">BRANCH</span>
                 <div class="branch-selector-wrapper">
@@ -493,7 +498,104 @@
                 <button class="btn-git-action-sm" id="gitPullBtn" title="Pull from remote">↓ Pull</button>
                 <button class="btn-git-action-sm" id="gitRefreshBtn" title="Refresh git status">↻</button>
               </div>
+
+              <!-- INLINE: New Branch Drawer (Instant, inline, zero-modal) -->
+              <div class="git-inline-form-card" id="inlineNewBranchCard" style="display: none;">
+                <div class="gifc-header">
+                  <span>NEW BRANCH</span>
+                  <button class="btn-gifc-close" id="closeInlineNewBranchBtn">✕</button>
+                </div>
+                <input type="text" id="inlineBranchNameInput" class="git-inline-input" placeholder="e.g. feature/auth or fix/bug" autocomplete="off" />
+                <div class="gifc-actions">
+                  <button class="btn-gifc-primary" id="confirmInlineBranchBtn">✓ Create & Checkout</button>
+                </div>
+                <div id="inlineBranchNotice" class="pr-result-notice" style="display: none;"></div>
+              </div>
+
+              <!-- INLINE: Delete Branch Drawer -->
+              <div class="git-inline-form-card" id="inlineDeleteBranchCard" style="display: none;">
+                <div class="gifc-header">
+                  <span>DELETE BRANCH</span>
+                  <button class="btn-gifc-close" id="closeInlineDeleteBranchBtn">✕</button>
+                </div>
+                <select id="inlineDeleteBranchSelect" class="git-inline-select"></select>
+                <label class="checkbox-container" style="margin: 6px 0; font-size: 11px;">
+                  <input type="checkbox" id="inlineDeleteBranchForce" />
+                  <span>Force delete (-D)</span>
+                </label>
+                <div class="gifc-actions">
+                  <button class="btn-gifc-danger" id="confirmInlineDeleteBranchBtn">Delete Branch</button>
+                </div>
+                <div id="inlineDeleteBranchNotice" class="pr-result-notice" style="display: none;"></div>
+              </div>
+
+              <!-- GITHUB REPOSITORY CARD -->
               <div class="git-repo-bar" id="gitRepoBar">
+                <!-- Linked to GitHub -->
+                <!-- GitHub Account Session Card -->
+                <div class="gh-account-card unauthenticated" id="ghAccountUnauth">
+                  <div class="ghac-left">
+                    <div class="ghac-icon">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    </div>
+                    <div class="ghac-info">
+                      <span class="ghac-title">GitHub Account</span>
+                      <span class="ghac-sub">Not connected</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-gh-signin" id="openGhSignInBtn">🔑 Sign In</button>
+                </div>
+
+                <!-- INLINE: Sign In to GitHub Card (Zero-modal, 100% visible) -->
+                <div class="git-inline-form-card" id="inlineGhSignInCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>SIGN IN TO GITHUB</span>
+                    <button type="button" class="btn-gifc-close" id="closeInlineGhSignInBtn">✕</button>
+                  </div>
+                  <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.35;">
+                    Sign in once to link your account. All future repo creation & code pushing will happen automatically under your account.
+                  </p>
+
+                  <div class="signin-step-card" style="margin-bottom: 8px;">
+                    <div class="ssc-step">1</div>
+                    <div class="ssc-content">
+                      <span class="ssc-title">Generate Personal Token</span>
+                      <p class="ssc-desc">Opens GitHub with the required scopes (<code>repo</code>, <code>read:user</code>) pre-selected.</p>
+                      <button type="button" class="btn-open-gh-token" id="inlineOpenGhTokenBtn">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        <span>Open GitHub Token Page</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="signin-step-card" style="margin-bottom: 8px;">
+                    <div class="ssc-step">2</div>
+                    <div class="ssc-content">
+                      <span class="ssc-title">Paste Token</span>
+                      <div class="input-with-action" style="margin-top: 5px;">
+                        <input type="password" id="inlineGhSignInTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                        <button type="button" class="btn-toggle-eye" id="toggleInlineGhSignInVisibility">👁️</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="gifc-actions">
+                    <button type="button" class="btn-publish-github-full" id="confirmInlineGhSignInBtn">✓ Sign In & Link Account</button>
+                  </div>
+                  <div id="inlineGhSignInNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
+                </div>
+
+                <div class="gh-account-card authenticated" id="ghAccountAuth" style="display: none;">
+                  <div class="ghac-left">
+                    <img id="ghUserAvatar" class="ghac-avatar" src="" alt="avatar" />
+                    <div class="ghac-info">
+                      <span class="ghac-username" id="ghUsername">@username</span>
+                      <span class="ghac-status"><span class="dot-green-xs"></span> Connected · Token saved ✓</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-gh-signout" id="ghSignOutBtn" title="Disconnect GitHub account">Sign Out</button>
+                </div>
+
                 <div class="grb-linked" id="gitLinkedState" style="display: none;">
                   <div class="grb-info">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -501,12 +603,98 @@
                   </div>
                   <button class="btn-git-action-xs" id="gitEditRemoteBtn" title="Set or change remote origin URL">Edit URL</button>
                 </div>
+
+                <!-- Not Linked to GitHub Yet -->
                 <div class="grb-unlinked" id="gitUnlinkedState">
-                  <button class="btn-publish-github" id="openCreateRepoModalBtn" title="Create a new repository directly on GitHub and publish this project">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-                    <span>🐙 Create & Publish to GitHub</span>
-                  </button>
+                  <div class="github-unlinked-banner">
+                    <div class="gub-top">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                      <span class="gub-title">GitHub Repository</span>
+                    </div>
+                    <p class="gub-desc">Create & publish a new repository directly to GitHub.</p>
+                    <div class="gub-btn-row">
+                      <button class="btn-publish-github" id="toggleInlineCreateRepoBtn">
+                        <span>🐙 Create GitHub Repo</span>
+                      </button>
+                      <button class="btn-link-remote-xs" id="toggleInlineLinkRemoteBtn" title="Link existing git remote URL">
+                        <span>🔗 Link URL</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- INLINE: Create GitHub Repo Form (Instant, inline, zero-modal) -->
+                <div class="git-inline-form-card" id="inlineCreateRepoCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>CREATE GITHUB REPOSITORY</span>
+                    <button class="btn-gifc-close" id="closeInlineCreateRepoBtn">✕</button>
+                  </div>
+
+                  <!-- Connected Account Banner -->
+                  <div class="inline-auth-badge" id="inlineRepoAuthBadge" style="display: none;">
+                    <span class="iab-dot"></span>
+                    <span>Publishing to: <b id="inlinePublishAsUser">@username</b> (Token auto-loaded ✓)</span>
+                  </div>
+
+                  <!-- Prompt to connect if not authenticated -->
+                  <div class="inline-auth-prompt" id="inlineRepoAuthPrompt">
+                    <span>💡 Sign in once to auto-load your token forever.</span>
+                    <button type="button" class="btn-signin-link" id="inlinePromptSignInBtn">Sign In with GitHub</button>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">REPO NAME</label>
+                    <input type="text" id="inlineRepoNameInput" class="git-inline-input" placeholder="e.g. personal-harness" autocomplete="off" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">DESCRIPTION (OPTIONAL)</label>
+                    <input type="text" id="inlineRepoDescInput" class="git-inline-input" placeholder="Short description..." autocomplete="off" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">VISIBILITY</label>
+                    <div class="visibility-pill-group">
+                      <label class="vis-pill active" id="inlineVisPillPublic">
+                        <input type="radio" name="inlineRepoVis" value="public" checked style="display: none;">
+                        <span>🌐 Public</span>
+                      </label>
+                      <label class="vis-pill" id="inlineVisPillPrivate">
+                        <input type="radio" name="inlineRepoVis" value="private" style="display: none;">
+                        <span>🔒 Private</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Manual PAT Group: Hidden when signed in -->
+                  <div class="form-group" id="inlineRepoTokenGroup" style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 3px;">GITHUB PAT TOKEN</label>
+                    <div class="input-with-action">
+                      <input type="password" id="inlineRepoTokenInput" class="git-inline-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                      <button class="btn-toggle-eye" id="toggleInlineGhKeyVisibility" type="button">👁️</button>
+                    </div>
+                    <span class="field-hint" style="font-size: 10px; margin-top: 2px;">Stored locally. Needs <code>repo</code> scope.</span>
+                  </div>
+
+                  <label class="checkbox-container" style="margin: 6px 0 10px 0; font-size: 11px;">
+                    <input type="checkbox" id="inlineRepoAutoPush" checked />
+                    <span>Auto-commit & push current code</span>
+                  </label>
+                  <button class="btn-publish-github-full" id="confirmInlineCreateRepoBtn">🚀 Create Repo & Push Code</button>
+                  <div id="inlineRepoStatusNotice" class="pr-result-notice" style="display: none; margin-top: 8px;"></div>
+                </div>
+
+                <!-- INLINE: Link Existing Remote URL Form -->
+                <div class="git-inline-form-card" id="inlineLinkRemoteCard" style="display: none;">
+                  <div class="gifc-header">
+                    <span>LINK REMOTE ORIGIN</span>
+                    <button class="btn-gifc-close" id="closeInlineLinkRemoteBtn">✕</button>
+                  </div>
+                  <input type="text" id="inlineRemoteUrlInput" class="git-inline-input" placeholder="https://github.com/owner/repo.git" autocomplete="off" />
+                  <div class="gifc-actions">
+                    <button class="btn-gifc-primary" id="confirmInlineLinkRemoteBtn">✓ Save Origin URL</button>
+                  </div>
+                  <div id="inlineRemoteNotice" class="pr-result-notice" style="display: none;"></div>
+                </div>
+
               </div>
             </div>
 
@@ -715,6 +903,53 @@
       </div>
     </div>
 
+    <!-- Sign In to GitHub Modal -->
+    <div class="modal-backdrop" id="ghSignInModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <h3>Sign in to GitHub</h3>
+          </div>
+          <button class="btn-close-modal" id="closeGhSignInModalBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.4;">
+            Sign in once to link your account. All future repo creation, git pushing, and pull requests will use this account automatically with <b>zero manual token entry</b>.
+          </p>
+
+          <div class="signin-step-card">
+            <div class="ssc-step">STEP 1</div>
+            <div class="ssc-content">
+              <span class="ssc-title">Generate Personal Access Token</span>
+              <p class="ssc-desc">Opens GitHub with the exact required scopes (<code>repo</code>, <code>read:user</code>) pre-selected.</p>
+              <button type="button" class="btn-open-gh-token" id="openGhTokenPageBtn">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                <span>1. Open GitHub Token Page in Browser</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="signin-step-card" style="margin-top: 10px;">
+            <div class="ssc-step">STEP 2</div>
+            <div class="ssc-content">
+              <span class="ssc-title">Paste Token to Connect</span>
+              <div class="input-with-action" style="margin-top: 6px;">
+                <input type="password" id="ghSignInTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                <button class="btn-toggle-eye" id="toggleGhSignInTokenVisibility" type="button">👁️</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="ghSignInNotice" class="pr-result-notice" style="display: none; margin-top: 12px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelGhSignInBtn">Cancel</button>
+          <button class="btn-primary" id="confirmGhSignInBtn">✓ Sign In & Link Account</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Create GitHub Repo Modal -->
     <div class="modal-backdrop" id="createRepoModal" style="display: none;">
       <div class="modal-card modal-card-sm">
@@ -852,11 +1087,14 @@
       </div>
     </div>
 
+    <!-- Hidden telemetry helpers -->
+    <span id="activePersonaDisplay" style="display: none;"></span>
+
     <!-- Notification Toast -->
     <div class="toast-container" id="toastContainer"></div>
 
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4.2"></script>
 </body>
 </html>

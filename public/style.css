@@ -2591,7 +2591,7 @@ body.mac-app {
 }
 
 .btn-publish-github {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2611,6 +2611,389 @@ body.mac-app {
   border-color: #3fb950;
   color: #ffffff;
   box-shadow: 0 0 10px rgba(63, 185, 80, 0.25);
+}
+
+.btn-publish-github-full {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #238636, #2ea043);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.btn-publish-github-full:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.btn-publish-github-full:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.github-unlinked-banner {
+  background: linear-gradient(135deg, rgba(35, 134, 54, 0.1), rgba(14, 165, 233, 0.05));
+  border: 1px solid rgba(46, 160, 67, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  margin-top: 6px;
+}
+
+.gub-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #3fb950;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.gub-desc {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 4px 0 8px 0;
+  line-height: 1.35;
+}
+
+.gub-btn-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-link-remote-xs {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-link-remote-xs:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Inline Git Form Cards */
+.git-inline-form-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  margin-top: 8px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.gifc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #38bdf8;
+  margin-bottom: 7px;
+}
+
+.btn-gifc-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 1px 4px;
+}
+.btn-gifc-close:hover {
+  color: var(--text-main);
+}
+
+.git-inline-input,
+.git-inline-select {
+  width: 100%;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 11px;
+  padding: 5px 8px;
+  outline: none;
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+.git-inline-input:focus,
+.git-inline-select:focus {
+  border-color: var(--ds-cyan);
+}
+
+.gifc-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-gifc-primary {
+  flex: 1;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-gifc-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-gifc-danger {
+  flex: 1;
+  background: var(--rose-cancel);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-gifc-danger:hover {
+  filter: brightness(1.1);
+}
+
+/* GitHub Account Session Card */
+.gh-account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.gh-account-card.authenticated {
+  border-color: rgba(46, 160, 67, 0.4);
+  background: linear-gradient(135deg, rgba(35, 134, 54, 0.12), rgba(0, 0, 0, 0.25));
+}
+
+.ghac-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.ghac-icon {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.ghac-avatar {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  border: 1.5px solid #3fb950;
+  object-fit: cover;
+}
+
+.ghac-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ghac-title,
+.ghac-username {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ghac-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.ghac-status {
+  font-size: 10px;
+  color: #3fb950;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot-green-xs {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 5px #3fb950;
+}
+
+.btn-gh-signin {
+  background: #238636;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-gh-signin:hover {
+  background: #2ea043;
+  transform: translateY(-1px);
+}
+
+.btn-gh-signout {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-gh-signout:hover {
+  color: var(--rose-cancel);
+  border-color: var(--rose-cancel);
+}
+
+.inline-auth-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(46, 160, 67, 0.15);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+  color: #3fb950;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.iab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 6px #3fb950;
+}
+
+.inline-auth-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.btn-signin-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Sign In Modal Step Cards */
+.signin-step-card {
+  display: flex;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px;
+}
+
+.ssc-step {
+  font-size: 9px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  height: fit-content;
+}
+
+.ssc-content {
+  flex: 1;
+}
+
+.ssc-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.ssc-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.btn-open-gh-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #238636;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-open-gh-token:hover {
+  background: #2ea043;
 }
 
 /* Visibility Pills */
