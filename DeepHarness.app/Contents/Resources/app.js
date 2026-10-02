@@ -164,6 +164,8 @@ const el = {
   confirmCreateRepoBtn: document.getElementById('confirmCreateRepoBtn'),
   newRepoNameInput: document.getElementById('newRepoNameInput'),
   newRepoDescInput: document.getElementById('newRepoDescInput'),
+  modalGhTokenInput: document.getElementById('modalGhTokenInput'),
+  toggleModalGhKeyVisibility: document.getElementById('toggleModalGhKeyVisibility'),
   visPillPublic: document.getElementById('visPillPublic'),
   visPillPrivate: document.getElementById('visPillPrivate'),
   newRepoAutoPush: document.getElementById('newRepoAutoPush'),
@@ -443,6 +445,13 @@ function setupEventListeners() {
   if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.addEventListener('click', submitCreateRepo);
   if (el.visPillPublic) el.visPillPublic.addEventListener('click', () => setRepoVisibilityPill('public'));
   if (el.visPillPrivate) el.visPillPrivate.addEventListener('click', () => setRepoVisibilityPill('private'));
+  if (el.toggleModalGhKeyVisibility) {
+    el.toggleModalGhKeyVisibility.addEventListener('click', () => {
+      if (el.modalGhTokenInput) {
+        el.modalGhTokenInput.type = el.modalGhTokenInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
 
   if (el.closeCreateBranchModalBtn) el.closeCreateBranchModalBtn.addEventListener('click', closeCreateBranchModal);
   if (el.cancelCreateBranchBtn) el.cancelCreateBranchBtn.addEventListener('click', closeCreateBranchModal);
@@ -2540,9 +2549,8 @@ async function loadGitStatus() {
             <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(f.path)}</span>
           `;
           item.addEventListener('click', async () => {
-            const diffRes = await fetch(`/api/git/diff?file=${encodeURIComponent(f.path)}`);
-            const diffData = await diffRes.json();
-            openDiffViewer(f.path, diffData.diff);
+            // Load file directly in the editor for instant viewing and editing
+            await loadWorkspaceFile(f.path);
           });
           el.gitChangesList.appendChild(item);
         });
@@ -2704,6 +2712,9 @@ function openCreateRepoModal() {
   const defaultName = root.split('/').filter(Boolean).pop() || 'my-project';
   if (el.newRepoNameInput) el.newRepoNameInput.value = defaultName;
   if (el.newRepoDescInput) el.newRepoDescInput.value = '';
+  if (el.modalGhTokenInput && state.githubToken) {
+    el.modalGhTokenInput.value = state.githubToken;
+  }
   setRepoVisibilityPill('public');
   if (el.createRepoStatusNotice) el.createRepoStatusNotice.style.display = 'none';
   el.createRepoModal.style.display = 'flex';
@@ -2723,6 +2734,7 @@ function setRepoVisibilityPill(val) {
 async function submitCreateRepo() {
   const name = el.newRepoNameInput?.value?.trim();
   const desc = el.newRepoDescInput?.value?.trim() || '';
+  const token = el.modalGhTokenInput?.value?.trim() || state.githubToken || '';
   const isPrivate = state.studio.newRepoVisibility === 'private';
   const autoPush = el.newRepoAutoPush?.checked !== false;
 
@@ -2731,14 +2743,31 @@ async function submitCreateRepo() {
     return;
   }
 
+  if (!token) {
+    showCreateRepoNotice('Please enter your GitHub Personal Access Token (PAT)', 'error');
+    if (el.modalGhTokenInput) el.modalGhTokenInput.focus();
+    return;
+  }
+
   showCreateRepoNotice('Creating GitHub repository & syncing code...', 'info');
   if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = true;
 
   try {
+    // If token provided, save to settings for future actions
+    if (token) {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'github_token', value: token })
+      });
+      state.githubToken = token;
+      if (el.settingGitHubToken) el.settingGitHubToken.value = token;
+    }
+
     const res = await fetch('/api/github/create-repo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description: desc, isPrivate, autoPush })
+      body: JSON.stringify({ name, description: desc, isPrivate, autoPush, token })
     });
     const data = await res.json();
     if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = false;
@@ -2749,7 +2778,7 @@ async function submitCreateRepo() {
       loadGitStatus();
       loadFileTree(state.studio.currentPath);
     } else {
-      showCreateRepoNotice(data.error || 'Failed to create GitHub repository. Check your GitHub PAT in Settings.', 'error');
+      showCreateRepoNotice(data.error || 'Failed to create GitHub repository.', 'error');
     }
   } catch (e) {
     if (el.confirmCreateRepoBtn) el.confirmCreateRepoBtn.disabled = false;

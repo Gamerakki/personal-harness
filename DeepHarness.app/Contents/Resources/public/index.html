@@ -748,6 +748,14 @@
               </label>
             </div>
           </div>
+          <div class="form-group" id="modalGhTokenGroup">
+            <label for="modalGhTokenInput">GitHub Personal Access Token (PAT)</label>
+            <div class="input-with-action">
+              <input type="password" id="modalGhTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+              <button class="btn-toggle-eye" id="toggleModalGhKeyVisibility" type="button">👁️</button>
+            </div>
+            <span class="field-hint">Required to create repositories and push on your behalf. Saved securely in SQLite.</span>
+          </div>
           <div class="form-group">
             <label class="checkbox-container">
               <input type="checkbox" id="newRepoAutoPush" checked />
