@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepHarness — DeepSeek Studio</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="mac-app">
+  <div id="app-root">
+    
+    <!-- Top Window Titlebar (macOS Native Inset & Drag Region) -->
+    <header class="app-header">
+      <!-- Left: Native traffic light clearance & Brand -->
+      <div class="header-left">
+        <div class="traffic-light-spacer"></div>
+        <div class="brand-pill">
+          <div class="brand-gem">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span class="brand-title">DeepHarness</span>
+        </div>
+      </div>
+
+      <!-- Center: Clean Telemetry Pills -->
+      <div class="header-center">
+        <!-- Live Balance Pill -->
+        <div class="pill-badge balance-pill" id="balanceCard" title="Live DeepSeek Account Balance">
+          <span class="pill-dot" id="balanceStatusDot"></span>
+          <span class="pill-label">Balance:</span>
+          <span class="pill-val balance-text" id="balanceDisplay">Loading...</span>
+          <button class="pill-action-btn" id="refreshBalanceBtn" title="Refresh Live Balance">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Session Tokens Pill -->
+        <div class="pill-badge session-pill" id="sessionTokenCard" title="Tokens consumed in this session">
+          <span class="pill-icon">⚡</span>
+          <span class="pill-label">Session:</span>
+          <span class="pill-val" id="sessionTokensDisplay">0 tok</span>
+          <span class="pill-sub" id="sessionCostDisplay">(¥0.00)</span>
+        </div>
+
+        <!-- Cache Hit Rate Pill -->
+        <div class="pill-badge cache-pill" id="cacheEfficiencyCard" title="DeepSeek Prompt Cache Hit Rate (Cheaper Tokens)">
+          <span class="pill-badge-tag" id="cacheRatePercent">0% Cache Hit</span>
+          <span class="pill-savings" id="cacheSavingsDisplay">Saved: ¥0.00</span>
+        </div>
+      </div>
+
+      <!-- Right: Model Selector & Actions -->
+      <div class="header-right">
+        <div class="model-select-wrapper">
+          <select id="modelSelector" class="model-select" title="Active AI Model">
+            <option value="deepseek-reasoner" selected>🧠 deepseek-reasoner (R1)</option>
+            <option value="deepseek-chat">⚡ deepseek-chat (V4.1)</option>
+          </select>
+          <button class="icon-tool-btn" id="fetchModelsBtn" title="Auto-fetch all models from provider API">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="model-rate-pill" id="activeModelRatePill" title="Official API Pricing Rate per Million Tokens">
+          <span>In: ¥1.00/M</span>
+          <span class="rate-sep">•</span>
+          <span>Out: ¥2.19/M</span>
+        </div>
+
+        <button class="nav-icon-btn primary-studio-btn" id="openEditorBtn" title="Workspace Studio: Files, Code Editor & GitHub PR (⌥S)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+          </svg>
+          <span class="nav-btn-label">Studio & Git</span>
+        </button>
+
+        <button class="nav-icon-btn" id="openVaultBtn" title="Code Vault & Saved Snippets">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <span class="nav-btn-label">Vault</span>
+          <span class="badge-mini" id="vaultCountBadge">0</span>
+        </button>
+
+        <button class="nav-icon-btn icon-only" id="openSettingsBtn" title="Settings, Providers & API Keys">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Splitter -->
+    <div class="workspace-body">
+      
+      <!-- Left Sidebar: Conversations & Cleaner Architecture -->
+      <aside class="sidebar" id="sidebar">
+        <!-- New Chat Action -->
+        <div class="sidebar-action-header">
+          <button class="btn-new-chat-sleek" id="newChatBtn">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>New Chat</span>
+            <kbd class="kbd-badge">⌘N</kbd>
+          </button>
+          <button class="btn-sidebar-studio" id="openEditorSidebarBtn" title="Workspace Studio: Files, Code & Git (⌥S)">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+            </svg>
+            <span>Studio & Git</span>
+            <kbd class="kbd-badge">⌥S</kbd>
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="sidebar-search-box">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="sessionSearchInput" placeholder="Search chats...">
+        </div>
+
+        <!-- Conversation History Section -->
+        <div class="sidebar-scrollable">
+          <div class="chat-section-label">
+            <span>RECENT SESSIONS</span>
+            <span class="count-pill" id="sessionCountBadge">0</span>
+          </div>
+          <div class="session-list" id="sessionList">
+            <!-- Dynamic session items inserted here -->
+          </div>
+        </div>
+
+        <!-- Lifetime Telemetry Footer -->
+        <div class="sidebar-footer-card">
+          <div class="sfc-top">
+            <span class="sfc-title">LIFETIME USAGE</span>
+            <span class="sfc-badge">SQLite</span>
+          </div>
+          <div class="sfc-stats-row">
+            <div class="sfc-col">
+              <span class="sfc-val" id="ltTotalTokens">0</span>
+              <span class="sfc-sub">Tokens</span>
+            </div>
+            <div class="sfc-col">
+              <span class="sfc-val" id="ltTotalCost">¥0.00</span>
+              <span class="sfc-sub">Spent</span>
+            </div>
+            <div class="sfc-col highlight">
+              <span class="sfc-val" id="ltTotalSaved">¥0.00</span>
+              <span class="sfc-sub">Saved</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Chat Area -->
+      <main class="chat-main">
+        
+        <!-- Active Session Metadata Sub-bar -->
+        <div class="session-info-bar" id="sessionInfoBar">
+          <div class="session-title-edit" id="sessionTitleContainer">
+            <span class="session-active-title" id="activeSessionTitle" title="Click pencil or double-click to rename">New DeepSeek Session</span>
+            <button class="btn-tiny-edit" id="renameSessionBtn" title="Rename Session">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </button>
+            <div class="session-title-input-wrapper" id="sessionTitleInputWrapper" style="display: none;">
+              <input type="text" id="sessionTitleInput" class="session-title-inline-input" placeholder="Conversation name..." />
+              <button class="btn-inline-save" id="saveSessionTitleBtn" title="Save (Enter)">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </button>
+              <button class="btn-inline-cancel" id="cancelSessionTitleBtn" title="Cancel (Esc)">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="session-quick-actions">
+            <button class="btn-ghost-sm studio" id="openEditorChatBtn" title="Workspace Studio: Files, Code & Git (⌥S)">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                <line x1="12" y1="2" x2="12" y2="6"/>
+              </svg>
+              <span>Studio</span>
+            </button>
+            <div class="context-gauge" title="Context Token Budget Status">
+              <span class="gauge-label">Context</span>
+              <div class="gauge-bar">
+                <div class="gauge-fill" id="contextGaugeFill" style="width: 2%"></div>
+              </div>
+              <span class="gauge-text" id="contextGaugeText">0 / 64k tok</span>
+            </div>
+            <button class="btn-ghost-sm" id="exportSessionBtn" title="Export Markdown Transcript">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              <span>Export</span>
+            </button>
+            <button class="btn-ghost-sm danger" id="clearSessionBtn" title="Delete conversation">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div class="messages-container" id="messagesContainer">
+          
+          <!-- Elegant Welcome / Hero State -->
+          <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-hero">
+              <div class="hero-logo-halo">
+                <div class="halo-inner">
+                  <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                </div>
+              </div>
+              <h1 class="welcome-heading">DeepSeek Studio</h1>
+              <p class="welcome-sub">Engineered for deep reasoning, zero token wastage, and instant code persistence.</p>
+            </div>
+
+            <!-- Starter Prompt Suggestions -->
+            <div class="starter-prompts-container">
+              <span class="starter-label">QUICK START ENGINEERING WORKFLOWS</span>
+              <div class="starter-grid">
+                <button class="starter-card" data-prompt="Design a high-throughput async worker pool in Go with graceful shutdown and backpressure.">
+                  <div class="sc-header">
+                    <span class="sc-icon">🚀</span>
+                    <span class="sc-title">Concurrent Go Worker</span>
+                  </div>
+                  <span class="sc-desc">Worker pool with channel backpressure and graceful context cancellation.</span>
+                </button>
+
+                <button class="starter-card" data-prompt="Analyze how to optimize PostgreSQL indexing for high-frequency write workloads with JSONB columns.">
+                  <div class="sc-header">
+                    <span class="sc-icon">🗄️</span>
+                    <span class="sc-title">PostgreSQL Indexing</span>
+                  </div>
+                  <span class="sc-desc">Optimize GIN/B-Tree indexes for high-write JSONB workloads.</span>
+                </button>
+
+                <button class="starter-card" data-prompt="Explain how DeepSeek R1 reasoning architecture works compared to standard LLMs.">
+                  <div class="sc-header">
+                    <span class="sc-icon">🧠</span>
+                    <span class="sc-title">DeepSeek R1 Architecture</span>
+                  </div>
+                  <span class="sc-desc">Pure RL, reasoning trace tokens, and prefix cache matching.</span>
+                </button>
+
+                <button class="starter-card" data-prompt="Write a complete Python script that monitors API latencies with rolling percentiles.">
+                  <div class="sc-header">
+                    <span class="sc-icon">📊</span>
+                    <span class="sc-title">Latency Monitor (Python)</span>
+                  </div>
+                  <span class="sc-desc">P95/P99 latency tracking with alerts and disk export.</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Chat Message Stream -->
+          <div class="messages-flow" id="messagesFlow"></div>
+
+        </div>
+
+        <!-- Floating Streaming Abort Button -->
+        <div class="abort-floating-bar" id="abortFloatingBar" style="display: none;">
+          <button class="btn-abort" id="abortGenerationBtn">
+            <span class="stop-icon">■</span>
+            <span>Stop Generating (Save Tokens)</span>
+            <kbd class="shortcut-key">Esc</kbd>
+          </button>
+        </div>
+
+        <!-- Floating Chat Input Dock (Raycast / Cursor Floating Style) -->
+        <div class="floating-input-container">
+          
+          <!-- Role Persona Strip -->
+          <div class="role-selector-strip">
+            <div class="role-pill-group">
+              <button class="role-chip active" data-preset="r1-architect">
+                <span>🧠</span>
+                <span>Deep Architect</span>
+              </button>
+              <button class="role-chip" data-preset="v3-coder">
+                <span>⚡</span>
+                <span>Fast Coder (V4.1)</span>
+              </button>
+              <button class="role-chip" data-preset="bug-hunter">
+                <span>🛡️</span>
+                <span>Bug Hunter</span>
+              </button>
+              <button class="role-chip" data-preset="token-saver">
+                <span>🪙</span>
+                <span>Token Saver</span>
+              </button>
+            </div>
+
+            <!-- Smart Model Auto-Router & Quick Switcher -->
+            <div class="quick-mode-group" title="Execution Mode Router: Fast V4.1 (Direct code, 0 thinking tokens) vs Deep R1 (Step-by-step reasoning) vs Auto-Router">
+              <button type="button" class="mode-btn active" id="modeFastBtn" data-mode="fast" title="Fast V4.1: Instant streaming, zero thinking tokens, lowest cost">
+                <span>⚡ Fast (V4.1)</span>
+              </button>
+              <button type="button" class="mode-btn" id="modeDeepBtn" data-mode="deep" title="Deep R1: Exhaustive reasoning, memory models & algorithms">
+                <span>🧠 Deep (R1)</span>
+              </button>
+              <button type="button" class="mode-btn" id="modeAutoBtn" data-mode="auto" title="Auto-Detect: Automatically picks V4.1 for speed or R1 for architecture">
+                <span id="autoModeLabel">🎯 Auto</span>
+              </button>
+            </div>
+            
+            <div class="role-meta-right">
+              <span class="prompt-token-meter" id="promptTokenMeter" title="Pre-Flight telemetry: Estimated tokens, cost, and prefix cache hit rate before sending">Est: ~0 tok</span>
+              <button class="btn-subtle" id="toggleSystemPromptBtn" title="Inspect or edit system prompt">
+                <span>System Prompt</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Collapsible System Prompt Drawer -->
+          <div class="system-prompt-drawer" id="systemPromptDrawer" style="display: none;">
+            <div class="drawer-header">
+              <span>System Prompt (Prefix Cached across turns)</span>
+              <button class="btn-close-sm" id="closeSystemPromptDrawer">✕</button>
+            </div>
+            <textarea id="systemPromptInput" rows="3" placeholder="Enter system instructions..."></textarea>
+          </div>
+
+          <!-- Input Box Card -->
+          <div class="floating-input-card" id="floatingInputCard">
+            <!-- Attached Image Preview Container -->
+            <div class="attachment-preview-container" id="attachmentPreviewContainer" style="display: none;">
+              <div class="attachment-thumb-wrapper">
+                <img id="attachmentThumbImg" src="" alt="Pasted Screenshot" />
+                <button type="button" class="btn-remove-attachment" id="removeAttachmentBtn" title="Remove attached screenshot">✕</button>
+              </div>
+              <div class="attachment-info">
+                <span class="attachment-name" id="attachmentName">screenshot.png</span>
+                <span class="attachment-size" id="attachmentSize">(124 KB)</span>
+              </div>
+            </div>
+
+            <textarea 
+              id="promptTextarea" 
+              class="prompt-textarea" 
+              placeholder="Ask DeepSeek anything or paste screenshot ⌘+V... (Press ⌘+Enter to send)"
+              rows="1"
+            ></textarea>
+
+            <div class="input-card-bottom">
+              <div class="icb-left">
+                <button type="button" class="btn-attach-img" id="attachImageBtn" title="Attach screenshot or image (or ⌘+V paste directly)">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span>Attach Image</span>
+                </button>
+                <input type="file" id="imageFileInput" accept="image/*" style="display: none;" />
+
+                <span class="badge-prefix-cache">
+                  <span class="dot-green"></span>
+                  <span>Prefix Caching Active</span>
+                </span>
+              </div>
+              <div class="icb-right">
+                <button class="btn-send-modern" id="sendBtn" title="Send (⌘+Enter)">
+                  <span>Send</span>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- Workspace Studio & GitHub Slide-Over Drawer -->
+    <div class="studio-backdrop" id="studioBackdrop" style="display: none;"></div>
+    <aside class="studio-drawer" id="studioDrawer" style="display: none;">
+      <!-- Studio Header -->
+      <div class="studio-header">
+        <div class="sh-left">
+          <div class="sh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            <span>Workspace Studio</span>
+          </div>
+          <div class="studio-root-badge" id="studioRootBadge" title="Current Workspace Root Directory">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span id="studioRootDisplay">/workspace</span>
+          </div>
+        </div>
+
+        <div class="sh-center">
+          <div class="active-file-breadcrumb" id="activeFileBreadcrumb">
+            <span class="afb-name" id="afbName">No file selected</span>
+          </div>
+        </div>
+
+        <div class="sh-right">
+          <button class="btn-studio-action" id="studioSaveFileBtn" title="Save file to disk (⌘+S)">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Save</span>
+            <kbd class="kbd-hint">⌘S</kbd>
+          </button>
+          <button class="btn-studio-action ghost" id="studioToggleDiffBtn" title="Toggle Diff Viewer">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+            <span id="diffBtnLabel">Diff</span>
+          </button>
+          <button class="btn-close-studio" id="closeStudioBtn" title="Close Studio">✕</button>
+        </div>
+      </div>
+
+      <!-- Studio Layout Splitter -->
+      <div class="studio-body">
+        <!-- Left Sidebar (Explorer & Git) -->
+        <div class="studio-sidebar">
+          <div class="studio-tabs-strip">
+            <button class="studio-tab-btn active" id="studioTabBtnFiles" data-tab="files">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span>Files</span>
+            </button>
+            <button class="studio-tab-btn" id="studioTabBtnGit" data-tab="git">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+              <span>Git & PR</span>
+              <span class="studio-git-badge" id="studioGitBadge" style="display: none;">0</span>
+            </button>
+          </div>
+
+          <!-- Panel 1: File Explorer -->
+          <div class="studio-tab-panel active" id="studioPanelFiles">
+            <div class="file-tree-actions">
+              <input type="text" id="fileTreeFilter" class="tree-search-input" placeholder="Filter files...">
+              <div class="fta-buttons">
+                <button class="icon-tool-btn" id="treeNewFileBtn" title="Create New File">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </button>
+                <button class="icon-tool-btn" id="treeRefreshBtn" title="Refresh files">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="file-tree-container" id="fileTreeContainer">
+              <!-- File tree items inserted dynamically -->
+            </div>
+          </div>
+
+          <!-- Panel 2: Git & Pull Requests -->
+          <div class="studio-tab-panel" id="studioPanelGit" style="display: none;">
+            <!-- Branch & Remote Header -->
+            <div class="git-header-card">
+              <div class="ghc-row">
+                <span class="ghc-label">BRANCH</span>
+                <div class="branch-selector-wrapper">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                  <select id="gitBranchSelect" class="git-branch-select" title="Switch Branch">
+                    <option value="main">main</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ghc-actions-row">
+                <button class="btn-git-action-sm primary" id="gitNewBranchBtn" title="Create & switch to new branch">+ Branch</button>
+                <button class="btn-git-action-sm" id="gitDeleteBranchBtn" title="Delete a branch">✕ Branch</button>
+                <button class="btn-git-action-sm" id="gitPullBtn" title="Pull from remote">↓ Pull</button>
+                <button class="btn-git-action-sm" id="gitRefreshBtn" title="Refresh git status">↻</button>
+              </div>
+              <div class="git-repo-bar" id="gitRepoBar">
+                <div class="grb-linked" id="gitLinkedState" style="display: none;">
+                  <div class="grb-info">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                    <a href="#" target="_blank" id="gitRepoLink" class="grb-repo-link" title="Open repository on GitHub">owner/repo</a>
+                  </div>
+                  <button class="btn-git-action-xs" id="gitEditRemoteBtn" title="Set or change remote origin URL">Edit URL</button>
+                </div>
+                <div class="grb-unlinked" id="gitUnlinkedState">
+                  <button class="btn-publish-github" id="openCreateRepoModalBtn" title="Create a new repository directly on GitHub and publish this project">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                    <span>🐙 Create & Publish to GitHub</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Changed Files List -->
+            <div class="git-changes-section">
+              <div class="gcs-header">
+                <span>WORKING CHANGES</span>
+                <span class="count-pill" id="gitChangedCount">0</span>
+              </div>
+              <div class="git-changes-list" id="gitChangesList">
+                <div class="git-clean-msg">Workspace is clean. No uncommitted changes.</div>
+              </div>
+            </div>
+
+            <!-- Commit Form -->
+            <div class="git-commit-box">
+              <div class="gcb-top">
+                <span class="gcb-label">COMMIT MESSAGE</span>
+                <button class="btn-ai-sparkle-sm" id="gitAiCommitBtn" title="Use DeepSeek to auto-write conventional commit message from diff">
+                  <span>✨ AI Generate</span>
+                </button>
+              </div>
+              <textarea id="gitCommitInput" class="git-commit-textarea" rows="2" placeholder="feat: describe your change..."></textarea>
+              <div class="gcb-actions">
+                <button class="btn-commit-primary" id="gitCommitBtn">Commit All</button>
+                <button class="btn-commit-secondary" id="gitPushBtn" title="Push current branch to origin">Push ↑</button>
+              </div>
+            </div>
+
+            <!-- GitHub Pull Request Section -->
+            <div class="git-pr-section">
+              <div class="gpr-header">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+                <span>GITHUB PULL REQUEST</span>
+              </div>
+              <input type="text" id="gitPrTitleInput" class="git-pr-input" placeholder="PR Title: e.g. Add features...">
+              <textarea id="gitPrBodyInput" class="git-pr-textarea" rows="2" placeholder="PR Description..."></textarea>
+              <div class="gpr-footer">
+                <span class="gpr-base-hint">into <code id="gitPrBaseDisplay">main</code></span>
+                <button class="btn-create-pr" id="gitCreatePrBtn">🚀 Open PR</button>
+              </div>
+              <div id="gitPrResultNotice" style="display: none;" class="pr-result-notice"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Pane: Code Editor & Diff Viewer -->
+        <div class="studio-editor-area">
+          <!-- Normal Code Editor View -->
+          <div class="editor-view-container" id="editorViewContainer">
+            <div class="code-editor-wrapper">
+              <div class="editor-line-numbers" id="editorLineNumbers">1</div>
+              <textarea id="studioCodeEditor" class="studio-code-textarea" spellcheck="false" placeholder="// Select a file from the explorer or create a new file to start editing..."></textarea>
+            </div>
+            <div class="editor-status-bar">
+              <div class="esb-left">
+                <span id="editorDirtyIndicator" class="dirty-badge clean">Saved</span>
+                <span id="editorFileLang">Plain Text</span>
+              </div>
+              <div class="esb-right">
+                <span id="editorLineColInfo">Ln 1, Col 1</span>
+                <span id="editorCharCount">0 chars</span>
+                <span id="editorFileSize">0 B</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diff Viewer View -->
+          <div class="diff-view-container" id="diffViewContainer" style="display: none;">
+            <div class="diff-header-bar">
+              <div class="dh-title">
+                <span id="diffViewerTitle">Diff Comparison</span>
+              </div>
+              <button class="btn-studio-action apply-diff-btn" id="applyDiffToFileBtn" style="display: none;">
+                Apply to File
+              </button>
+            </div>
+            <div class="diff-content-scroll" id="diffContentScroll">
+              <pre class="diff-code-display" id="diffCodeDisplay">// Select a changed file or click 'Diff' to view changes</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Code Vault Slide-Over Drawer -->
+    <div class="vault-backdrop" id="vaultBackdrop" style="display: none;"></div>
+    <aside class="vault-drawer" id="vaultDrawer" style="display: none;">
+      <div class="vault-header">
+        <div class="vh-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <h3>Code Vault</h3>
+        </div>
+        <button class="btn-close-vault" id="closeVaultBtn">✕</button>
+      </div>
+      <div class="vault-desc">
+        All code snippets saved directly to <code>./exported_code/</code> on your Mac.
+      </div>
+      <div class="vault-list" id="vaultList">
+        <!-- Rendered snippet items -->
+      </div>
+    </aside>
+
+    <!-- Settings Modal -->
+    <div class="modal-backdrop" id="settingsModal" style="display: none;">
+      <div class="modal-card modal-card-large">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <h3>Settings & Models</h3>
+          </div>
+          <button class="btn-close-modal" id="closeSettingsModalBtn">✕</button>
+        </div>
+
+        <!-- Modal Tabs -->
+        <div class="modal-tabs-strip">
+          <button class="modal-tab-btn active" id="tabBtnDeepSeek" data-tab="tabDeepSeek">🪙 DeepSeek & Balance</button>
+          <button class="modal-tab-btn" id="tabBtnProviders" data-tab="tabProviders">🌐 AI Providers & Auto-Fetch</button>
+          <button class="modal-tab-btn" id="tabBtnGitHub" data-tab="tabGitHub">🐙 GitHub & Workspace</button>
+        </div>
+
+        <div class="modal-body">
+          
+          <!-- TAB 1: DeepSeek & Balance -->
+          <div class="tab-pane active" id="tabDeepSeek">
+            <div class="form-group">
+              <label for="settingApiKey">DeepSeek API Key</label>
+              <div class="input-with-action">
+                <input type="password" id="settingApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                <button class="btn-toggle-eye" id="toggleApiKeyVisibility" type="button">👁️</button>
+              </div>
+              <span class="field-hint">Stored securely locally in SQLite. Never leaves your Mac.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="settingEndpoint">API Base URL</label>
+              <input type="text" id="settingEndpoint" value="https://api.deepseek.com">
+            </div>
+
+            <div class="form-group">
+              <label for="settingCurrency">Currency Display</label>
+              <select id="settingCurrency">
+                <option value="both" selected>Both CNY (¥) & USD ($)</option>
+                <option value="cny">CNY (¥) Only</option>
+                <option value="usd">USD ($) Only</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>DeepSeek Balance Diagnostic</label>
+              <div class="diagnostic-box" id="diagnosticBox">
+                <span class="diag-status">Click "Test Balance Connection" to verify your credentials.</span>
+              </div>
+              <button class="btn-secondary" id="testConnectionBtn">Test Balance Connection</button>
+            </div>
+          </div>
+
+          <!-- TAB 2: AI Providers & Auto-Fetch Models -->
+          <div class="tab-pane" id="tabProviders" style="display: none;">
+            <div class="providers-manager-header">
+              <p class="pm-sub">Auto-fetch available models directly from provider APIs with 1-click.</p>
+            </div>
+            
+            <div class="providers-list" id="providersList">
+              <!-- Dynamically rendered provider cards -->
+            </div>
+
+            <div class="add-provider-box">
+              <h4>+ Add Custom Provider (OpenAI Compatible)</h4>
+              <div class="add-provider-grid">
+                <input type="text" id="newProvId" placeholder="ID (e.g. together, lmstudio)">
+                <input type="text" id="newProvName" placeholder="Name (e.g. Together AI)">
+                <input type="text" id="newProvUrl" placeholder="Base URL (e.g. https://api.together.xyz/v1)">
+                <input type="password" id="newProvKey" placeholder="API Key">
+              </div>
+              <button class="btn-secondary" id="addProviderBtn" style="margin-top: 8px;">Add Provider & Fetch Models</button>
+            </div>
+          <!-- TAB 3: GitHub & Workspace -->
+          <div class="tab-pane" id="tabGitHub" style="display: none;">
+            <div class="form-group">
+              <label for="settingWorkspaceRoot">Workspace Root Folder (Project Directory)</label>
+              <input type="text" id="settingWorkspaceRoot" placeholder="/Users/.../your-project">
+              <span class="field-hint">The root folder displayed in the Workspace Studio file tree & Git tracker.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="settingGitHubToken">GitHub Personal Access Token (classic or fine-grained)</label>
+              <div class="input-with-action">
+                <input type="password" id="settingGitHubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                <button class="btn-toggle-eye" id="toggleGhKeyVisibility" type="button">👁️</button>
+              </div>
+              <span class="field-hint">Required for 1-click Push & Pull Request creation on GitHub (requires <code>repo</code> scope). Stored locally in SQLite.</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelSettingsBtn">Close</button>
+          <button class="btn-primary" id="saveSettingsBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create GitHub Repo Modal -->
+    <div class="modal-backdrop" id="createRepoModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            <h3>Create & Publish to GitHub</h3>
+          </div>
+          <button class="btn-close-modal" id="closeCreateRepoModalBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="newRepoNameInput">Repository Name</label>
+            <input type="text" id="newRepoNameInput" placeholder="e.g. my-app" autocomplete="off" />
+            <span class="field-hint">Will be created under your GitHub account.</span>
+          </div>
+          <div class="form-group">
+            <label for="newRepoDescInput">Description (Optional)</label>
+            <input type="text" id="newRepoDescInput" placeholder="Short description of the repository..." autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Visibility</label>
+            <div class="visibility-pill-group">
+              <label class="vis-pill active" id="visPillPublic">
+                <input type="radio" name="repoVisRadio" value="public" checked style="display: none;">
+                <span>🌐 Public</span>
+              </label>
+              <label class="vis-pill" id="visPillPrivate">
+                <input type="radio" name="repoVisRadio" value="private" style="display: none;">
+                <span>🔒 Private</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="newRepoAutoPush" checked />
+              <span>Automatically initialize Git & push current code</span>
+            </label>
+          </div>
+          <div id="createRepoStatusNotice" class="pr-result-notice" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelCreateRepoBtn">Cancel</button>
+          <button class="btn-primary" id="confirmCreateRepoBtn">🚀 Create Repository</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Branch Modal -->
+    <div class="modal-backdrop" id="createBranchModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <h3>Create Git Branch</h3>
+          </div>
+          <button class="btn-close-modal" id="closeCreateBranchModalBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="newBranchNameInput">Branch Name</label>
+            <input type="text" id="newBranchNameInput" placeholder="e.g. feature/new-ui or fix/bug" autocomplete="off" />
+            <span class="field-hint">New branch branches off current HEAD and switches immediately.</span>
+          </div>
+          <div id="createBranchStatusNotice" class="pr-result-notice" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelCreateBranchBtn">Cancel</button>
+          <button class="btn-primary" id="confirmCreateBranchBtn">Create & Checkout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Branch Modal -->
+    <div class="modal-backdrop" id="deleteBranchModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <h3>Delete Branch</h3>
+          </div>
+          <button class="btn-close-modal" id="closeDeleteBranchModalBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="deleteBranchSelect">Select Branch to Delete</label>
+            <select id="deleteBranchSelect" class="form-select"></select>
+            <span class="field-hint">You cannot delete the currently checked-out branch.</span>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="deleteBranchForce" />
+              <span>Force delete (-D)</span>
+            </label>
+          </div>
+          <div id="deleteBranchStatusNotice" class="pr-result-notice" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelDeleteBranchBtn">Cancel</button>
+          <button class="btn-danger" id="confirmDeleteBranchBtn">Delete Branch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Remote URL Modal -->
+    <div class="modal-backdrop" id="editRemoteModal" style="display: none;">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <div class="mh-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <h3>Git Remote Origin</h3>
+          </div>
+          <button class="btn-close-modal" id="closeEditRemoteModalBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editRemoteUrlInput">Remote URL (origin)</label>
+            <input type="text" id="editRemoteUrlInput" placeholder="https://github.com/owner/repo.git" autocomplete="off" />
+            <span class="field-hint">Sets origin URL for pulling and pushing.</span>
+          </div>
+          <div id="editRemoteStatusNotice" class="pr-result-notice" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelEditRemoteBtn">Cancel</button>
+          <button class="btn-primary" id="confirmEditRemoteBtn">Save Remote</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

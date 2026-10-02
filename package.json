@@ -1,0 +1,20 @@
+{
+  "name": "deepseek-personal-harness",
+  "version": "1.0.0",
+  "description": "Robust, zero-leak Mac personal AI harness for DeepSeek and LLMs with live balance, token analytics, R1 reasoning traces, and code vault.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "desktop": "./harness-desktop.sh",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "deepseek",
+    "ai-harness",
+    "llm",
+    "token-monitor",
+    "macos"
+  ],
+  "author": "DeepSeek Harness Engineer",
+  "license": "MIT"
+}

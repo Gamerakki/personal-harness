@@ -1,0 +1,7 @@
+(node:77266) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+🚀 DeepSeek Personal AI Harness running at: http://127.0.0.1:4173
+💾 SQLite Database connected at: /Users/akashdeep/Desktop/personal harness/data/harness.db
+📂 Code Export Vault at: /Users/akashdeep/Desktop/personal harness/exported_code
+
