@@ -5,6 +5,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const crypto = require('node:crypto');
 const { execFile, execSync } = require('node:child_process');
+const os = require('node:os');
 
 const PORT = process.env.PORT || 4173;
 const HOME_DIR = process.env.HOME || require('node:os').homedir();
@@ -123,12 +124,13 @@ const DEFAULT_PROVIDERS = [
   {
     id: 'zai',
     name: 'Z.ai (GLM)',
-    base_url: 'https://api.z.ai/api/paas/v4',
+    base_url: 'https://api.z.ai/api/coding/paas/v4',
     models: [
-      { id: 'glm-4-plus', name: 'Z.ai: GLM-4-Plus (Flagship)' },
-      { id: 'glm-4-flash', name: 'Z.ai: GLM-4-Flash (Fast & Free)' },
-      { id: 'glm-4-long', name: 'Z.ai: GLM-4-Long (1M Context)' },
-      { id: 'codegeex-4', name: 'Z.ai: CodeGeeX-4 (Coding Expert)' }
+      { id: 'glm-5.3-flash', name: 'Z.ai: GLM-5.3-Flash (Fast & Reasoning)' },
+      { id: 'glm-5.3', name: 'Z.ai: GLM-5.3' },
+      { id: 'glm-5', name: 'Z.ai: GLM-5 Flagship' },
+      { id: 'glm-4.7', name: 'Z.ai: GLM-4.7' },
+      { id: 'glm-4.5', name: 'Z.ai: GLM-4.5' }
     ]
   },
   {
@@ -352,6 +354,23 @@ const server = http.createServer(async (req, res) => {
   try {
     // API Routes
     if (pathname.startsWith('/api/')) {
+      // System: Get Local IPv4 Address for Mobile Preview
+      if (pathname === '/api/system/local-ip' && method === 'GET') {
+        const interfaces = os.networkInterfaces();
+        let localIp = '127.0.0.1';
+        for (const name of Object.keys(interfaces)) {
+          for (const iface of interfaces[name]) {
+            const isIpv4 = iface.family === 'IPv4' || iface.family === 4;
+            if (isIpv4 && !iface.internal) {
+              localIp = iface.address;
+              break;
+            }
+          }
+          if (localIp !== '127.0.0.1') break;
+        }
+        return sendJson(res, 200, { ip: localIp, localIp, port: PORT });
+      }
+
       // 1. Check DeepSeek Account Balance
       if (pathname === '/api/balance' && method === 'GET') {
         let apiKey = req.headers.authorization?.replace(/^Bearer\s+/i, '') || getSetting('deepseek_api_key');
@@ -1072,6 +1091,146 @@ if __name__ == "__main__":
 
         walk(root);
         return sendJson(res, 200, { root, files });
+      }
+
+      // Fast codebase architecture scanner for Auto-Architecture Visualizer
+      if (pathname === '/api/workspace/architecture' && method === 'GET') {
+        const root = getWorkspaceRoot();
+        const routes = [];
+        const imports = [];
+        const dependencies = { prod: {}, dev: {}, scripts: {} };
+        const components = [];
+        const dbTables = [];
+        const aiProviders = [];
+        let totalFiles = 0;
+        let projectName = 'DeepHarness Project';
+
+        // 1. Scan package.json
+        const pkgPath = path.join(root, 'package.json');
+        if (fs.existsSync(pkgPath)) {
+          try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+            if (pkg.name) projectName = pkg.name;
+            if (pkg.dependencies) dependencies.prod = pkg.dependencies;
+            if (pkg.devDependencies) dependencies.dev = pkg.devDependencies;
+            if (pkg.scripts) dependencies.scripts = pkg.scripts;
+          } catch (_) {}
+        }
+
+        // 2. Scan code files in project
+        const ignored = new Set(['.git', 'node_modules', 'dist', '.DS_Store', '.system_generated', '.gemini', '__pycache__', '.venv', '.turbo', '.next']);
+        const codeFiles = [];
+
+        function scanDir(dir, rel = '') {
+          if (codeFiles.length >= 800) return;
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              if (ignored.has(entry.name)) continue;
+              const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                scanDir(fullPath, entryRel);
+              } else {
+                totalFiles++;
+                const ext = path.extname(entry.name).toLowerCase();
+                if (['.js', '.mjs', '.cjs', '.ts', '.py', '.html', '.css', '.json', '.sh'].includes(ext)) {
+                  codeFiles.push({ path: entryRel, fullPath, ext, name: entry.name });
+                }
+              }
+            }
+          } catch (_) {}
+        }
+        scanDir(root);
+
+        // 3. Extract routes, imports, db, ai providers
+        for (const file of codeFiles) {
+          try {
+            const content = fs.readFileSync(file.fullPath, 'utf-8');
+
+            // Scan server routes
+            const routeMatches = content.matchAll(/(?:pathname\s*===?\s*['"]([^'"]+)['"]\s*&&\s*method\s*===?\s*['"]([A-Z]+)['"])|(?:(?:app|router)\.(get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"])/g);
+            for (const m of routeMatches) {
+              if (m[1] && m[2]) {
+                routes.push({ method: m[2], path: m[1], file: file.path });
+              } else if (m[3] && m[4]) {
+                routes.push({ method: m[3].toUpperCase(), path: m[4], file: file.path });
+              }
+            }
+
+            // Scan frontend fetch calls
+            const fetchMatches = content.matchAll(/fetch\s*\(\s*['"`](\/api\/[^'"`\?\s\)]+)/g);
+            for (const fm of fetchMatches) {
+              if (!routes.some(r => r.path === fm[1])) {
+                routes.push({ method: 'API', path: fm[1], file: file.path, clientCall: true });
+              }
+            }
+
+            // Scan EventSource endpoints
+            const sseMatches = content.matchAll(/EventSource\s*\(\s*['"`](\/api\/[^'"`\?\s\)]+)/g);
+            for (const sm of sseMatches) {
+              if (!routes.some(r => r.path === sm[1])) {
+                routes.push({ method: 'SSE', path: sm[1], file: file.path, clientCall: true });
+              }
+            }
+
+            // Scan imports & requires
+            const importMatches = content.matchAll(/(?:import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"])|(?:require\s*\(\s*['"]([^'"]+)['"]\))/g);
+            for (const im of importMatches) {
+              const imp = im[1] || im[2];
+              if (imp && !imports.includes(imp) && !imp.startsWith('.')) {
+                imports.push(imp);
+              }
+            }
+
+            // Scan SQLite tables
+            const tableMatches = content.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_]+)/gi);
+            for (const tm of tableMatches) {
+              if (!dbTables.includes(tm[1])) dbTables.push(tm[1]);
+            }
+
+            // Scan AI Providers
+            if (content.includes('api.deepseek.com') && !aiProviders.includes('DeepSeek')) aiProviders.push('DeepSeek (R1 / V4.1)');
+            if (content.includes('api.z.ai') && !aiProviders.includes('Z.ai')) aiProviders.push('Z.ai (GLM-4 / 5.3)');
+            if (content.includes('openrouter.ai') && !aiProviders.includes('OpenRouter')) aiProviders.push('OpenRouter');
+            if (content.includes('api.openai.com') && !aiProviders.includes('OpenAI')) aiProviders.push('OpenAI');
+            if (content.includes('localhost:11434') && !aiProviders.includes('Ollama')) aiProviders.push('Ollama (Local)');
+
+            // Scan UI modules
+            if (file.path.startsWith('public/modules/') || file.path === 'public/app.js' || file.path === 'public/index.html') {
+              components.push({ path: file.path, name: file.name });
+            }
+          } catch (_) {}
+        }
+
+        // Deduplicate routes
+        const uniqueRoutes = [];
+        const seenRoute = new Set();
+        for (const r of routes) {
+          const key = `${r.method}:${r.path}`;
+          if (!seenRoute.has(key)) {
+            seenRoute.add(key);
+            uniqueRoutes.push(r);
+          }
+        }
+
+        return sendJson(res, 200, {
+          summary: {
+            projectName,
+            totalFiles,
+            totalRoutes: uniqueRoutes.length,
+            totalImports: imports.length,
+            dbTablesCount: dbTables.length,
+            aiProvidersCount: aiProviders.length
+          },
+          routes: uniqueRoutes,
+          imports,
+          dependencies,
+          dbTables,
+          aiProviders,
+          components,
+          files: codeFiles.map(f => f.path)
+        });
       }
 
       // Multi-file agentic applier
@@ -1852,10 +2011,11 @@ if __name__ == "__main__":
 
       if (pathname === '/api/models' && method === 'GET') {
         const models = db.prepare(`
-          SELECT m.*, p.name as provider_name, p.base_url
+          SELECT m.*, p.name as provider_name, p.base_url,
+            CASE WHEN p.api_key IS NOT NULL AND length(p.api_key) > 0 THEN 1 ELSE 0 END as has_key
           FROM models m
           JOIN providers p ON m.provider_id = p.id
-          ORDER BY p.name ASC, m.id ASC
+          ORDER BY has_key DESC, p.name ASC, m.id ASC
         `).all();
         return sendJson(res, 200, models);
       }
@@ -1867,6 +2027,9 @@ if __name__ == "__main__":
         const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
 
         let baseUrl = body.base_url || provider?.base_url || 'https://api.deepseek.com';
+        if (providerId === 'zai' && baseUrl.includes('api.z.ai/api/paas/v4') && !baseUrl.includes('coding')) {
+          baseUrl = 'https://api.z.ai/api/coding/paas/v4';
+        }
         let apiKey = body.api_key || provider?.api_key || (providerId === 'deepseek' ? getSetting('deepseek_api_key') : '');
 
         let modelsUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
@@ -1979,13 +2142,22 @@ if __name__ == "__main__":
 
         const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
         let endpoint = provider ? provider.base_url : getSetting('deepseek_endpoint', 'https://api.deepseek.com');
+        if (providerId === 'zai' && endpoint.includes('api.z.ai/api/paas/v4') && !endpoint.includes('coding')) {
+          endpoint = 'https://api.z.ai/api/coding/paas/v4';
+        }
         let apiKey = provider?.api_key || (providerId === 'deepseek' ? getSetting('deepseek_api_key') : '');
         if (!apiKey && providerId === 'deepseek') {
           apiKey = req.headers.authorization?.replace(/^Bearer\s+/i, '');
         }
 
         if (!apiKey && providerId !== 'ollama') {
-          return sendJson(res, 400, { error: `API Key for ${provider?.name || providerId} is required. Please configure it in Settings -> Providers.` });
+          return sendJson(res, 400, {
+            error: `API Key for ${provider?.name || providerId} is required. Please configure it in Settings -> Providers.`,
+            isQuotaExhausted: true,
+            statusCode: 401,
+            failedModel: model,
+            failedProvider: providerId
+          });
         }
 
         let completionsUrl = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
@@ -2101,7 +2273,34 @@ if __name__ == "__main__":
 
           if (!upstreamRes.ok) {
             const errText = await upstreamRes.text();
-            res.write(`data: ${JSON.stringify({ type: 'error', error: `DeepSeek API Error (${upstreamRes.status}): ${errText}` })}\n\n`);
+            const providerName = provider?.name || providerId.toUpperCase();
+            let parsedMsg = errText;
+            let parsedCode = upstreamRes.status;
+            try {
+              const parsed = JSON.parse(errText);
+              if (parsed.error?.message) {
+                parsedMsg = parsed.error.message;
+                if (parsed.error.code) {
+                  parsedCode = parsed.error.code;
+                  parsedMsg += ` (Code ${parsed.error.code})`;
+                }
+              } else if (parsed.message) {
+                parsedMsg = parsed.message;
+              }
+            } catch (_) {}
+
+            const isQuotaExhausted = upstreamRes.status === 429 || upstreamRes.status === 402 || upstreamRes.status === 403 ||
+              /quota|balance|insufficient|credit|exceeded|rate limit|1113|1114|too many requests|plan limit|billing/i.test(parsedMsg + ' ' + errText);
+
+            res.write(`data: ${JSON.stringify({
+              type: 'error',
+              error: `${providerName} API Error (${upstreamRes.status}): ${parsedMsg}`,
+              statusCode: upstreamRes.status,
+              code: parsedCode,
+              isQuotaExhausted,
+              failedModel: model,
+              failedProvider: providerId
+            })}\n\n`);
             res.end();
             activeStreams.delete(streamId);
             return;

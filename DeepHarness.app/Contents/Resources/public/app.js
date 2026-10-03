@@ -50,11 +50,24 @@ const state = {
     isRunning: false,
     lastError: null
   },
-  cachedFilesList: []
+  cachedFilesList: [],
+  pendingTurnRetry: null,
+  selectedQuotaModel: null
 };
 
 // DOM Elements
 const el = {
+  quotaExhaustedModal: document.getElementById('quotaExhaustedModal'),
+  closeQuotaModalBtn: document.getElementById('closeQuotaModalBtn'),
+  cancelQuotaModalBtn: document.getElementById('cancelQuotaModalBtn'),
+  confirmSwitchAndResumeBtn: document.getElementById('confirmSwitchAndResumeBtn'),
+  quotaFailedModelName: document.getElementById('quotaFailedModelName'),
+  quotaFailedErrorDetail: document.getElementById('quotaFailedErrorDetail'),
+  targetResumeModelName: document.getElementById('targetResumeModelName'),
+  quotaModelsGrid: document.getElementById('quotaModelsGrid'),
+  quickKeyProviderSelect: document.getElementById('quickKeyProviderSelect'),
+  quickKeyInput: document.getElementById('quickKeyInput'),
+  saveQuickKeyBtn: document.getElementById('saveQuickKeyBtn'),
   modeFastBtn: document.getElementById('modeFastBtn'),
   modeDeepBtn: document.getElementById('modeDeepBtn'),
   modeAutoBtn: document.getElementById('modeAutoBtn'),
@@ -194,6 +207,7 @@ const el = {
   previewDeviceTablet: document.getElementById('previewDeviceTablet'),
   previewDeviceMobile: document.getElementById('previewDeviceMobile'),
   previewExternalBtn: document.getElementById('previewExternalBtn'),
+  previewMobileQrBtn: document.getElementById('previewMobileQrBtn'),
   studioViewModes: document.getElementById('studioViewModes'),
   svmEditorBtn: document.getElementById('svmEditorBtn'),
   svmSplitBtn: document.getElementById('svmSplitBtn'),
@@ -219,6 +233,8 @@ const el = {
   treeRefreshBtn: document.getElementById('treeRefreshBtn'),
   fileTreeContainer: document.getElementById('fileTreeContainer'),
   studioHeaderGithubBtn: document.getElementById('studioHeaderGithubBtn'),
+  studioArchVisBtn: document.getElementById('studioArchVisBtn'),
+  studioSecurityScanBtn: document.getElementById('studioSecurityScanBtn'),
   gitBranchSelect: document.getElementById('gitBranchSelect'),
   gitNewBranchBtn: document.getElementById('gitNewBranchBtn'),
   gitDeleteBranchBtn: document.getElementById('gitDeleteBranchBtn'),
@@ -650,6 +666,11 @@ function setupEventListeners() {
   if (el.treeNewProjectBtn) el.treeNewProjectBtn.addEventListener('click', openNewProjectModal);
   if (el.closeNewProjectModalBtn) el.closeNewProjectModalBtn.addEventListener('click', closeNewProjectModal);
   if (el.cancelNewProjectBtn) el.cancelNewProjectBtn.addEventListener('click', closeNewProjectModal);
+  if (el.newProjectModal) {
+    el.newProjectModal.addEventListener('click', (e) => {
+      if (e.target === el.newProjectModal) closeNewProjectModal();
+    });
+  }
   if (el.browseNewProjectLocationBtn) el.browseNewProjectLocationBtn.addEventListener('click', browseNewProjectLocation);
   if (el.confirmNewProjectBtn) el.confirmNewProjectBtn.addEventListener('click', submitCreateProject);
   if (el.newProjectNameInput) {
@@ -672,6 +693,11 @@ function setupEventListeners() {
   if (el.nativePickFolderModalBtn) el.nativePickFolderModalBtn.addEventListener('click', pickWorkspaceFolder);
   if (el.closeOpenFolderModalBtn) el.closeOpenFolderModalBtn.addEventListener('click', closeOpenFolderModal);
   if (el.cancelOpenFolderBtn) el.cancelOpenFolderBtn.addEventListener('click', closeOpenFolderModal);
+  if (el.openFolderModal) {
+    el.openFolderModal.addEventListener('click', (e) => {
+      if (e.target === el.openFolderModal) closeOpenFolderModal();
+    });
+  }
   if (el.confirmCustomFolderBtn) el.confirmCustomFolderBtn.addEventListener('click', submitCustomFolder);
   if (el.customFolderPathInput) {
     el.customFolderPathInput.addEventListener('keydown', (e) => {
@@ -679,6 +705,23 @@ function setupEventListeners() {
       if (e.key === 'Escape') closeOpenFolderModal();
     });
   }
+
+  // Quota Exhausted Modal Listeners
+  if (el.closeQuotaModalBtn) el.closeQuotaModalBtn.addEventListener('click', closeQuotaExhaustedModal);
+  if (el.cancelQuotaModalBtn) el.cancelQuotaModalBtn.addEventListener('click', closeQuotaExhaustedModal);
+  if (el.quotaExhaustedModal) {
+    el.quotaExhaustedModal.addEventListener('click', (e) => {
+      if (e.target === el.quotaExhaustedModal) closeQuotaExhaustedModal();
+    });
+  }
+  if (el.confirmSwitchAndResumeBtn) {
+    el.confirmSwitchAndResumeBtn.addEventListener('click', () => {
+      if (state.selectedQuotaModel) {
+        resumeTurnWithModel(state.selectedQuotaModel);
+      }
+    });
+  }
+  if (el.saveQuickKeyBtn) el.saveQuickKeyBtn.addEventListener('click', saveQuickKeyFromQuotaModal);
   // View Mode Selectors (Editor, Split, Preview, Diff)
   if (el.svmEditorBtn) el.svmEditorBtn.addEventListener('click', () => setStudioViewMode('editor'));
   if (el.svmSplitBtn) el.svmSplitBtn.addEventListener('click', () => setStudioViewMode('split'));
@@ -692,6 +735,9 @@ function setupEventListeners() {
   if (el.previewDeviceTablet) el.previewDeviceTablet.addEventListener('click', () => setPreviewDevice('tablet'));
   if (el.previewDeviceMobile) el.previewDeviceMobile.addEventListener('click', () => setPreviewDevice('mobile'));
   if (el.previewExternalBtn) el.previewExternalBtn.addEventListener('click', openPreviewExternal);
+  if (el.previewMobileQrBtn) el.previewMobileQrBtn.addEventListener('click', () => {
+    if (window.DeepHarnessMobilePreview) window.DeepHarnessMobilePreview.showMobilePreviewQR();
+  });
 
   // Terminal Runner Controls
   if (el.studioTabBtnTerminal) el.studioTabBtnTerminal.addEventListener('click', () => switchStudioTab('terminal'));
@@ -753,6 +799,13 @@ function setupEventListeners() {
   if (el.studioHeaderGithubBtn) {
     el.studioHeaderGithubBtn.addEventListener('click', () => switchStudioTab('git'));
   }
+  if (el.studioArchVisBtn) el.studioArchVisBtn.addEventListener('click', () => {
+    if (window.DeepHarnessArchVisualizer) window.DeepHarnessArchVisualizer.showArchitectureVisualizer();
+  });
+  if (el.studioSecurityScanBtn) el.studioSecurityScanBtn.addEventListener('click', () => {
+    if (window.DeepHarnessSecurityScanner) window.DeepHarnessSecurityScanner.showScanReport();
+    if (window.DeepHarnessSecurityScanner) window.DeepHarnessSecurityScanner.scanForSecrets();
+  });
   if (el.gitRefreshBtn) el.gitRefreshBtn.addEventListener('click', loadGitStatus);
   if (el.gitBranchSelect) el.gitBranchSelect.addEventListener('change', (e) => switchBranch(e.target.value));
   if (el.gitNewBranchBtn) el.gitNewBranchBtn.addEventListener('click', toggleInlineNewBranch);
@@ -1162,7 +1215,7 @@ async function loadProviders() {
     const knownDefaults = [
       { id: 'deepseek', name: 'DeepSeek', base_url: 'https://api.deepseek.com' },
       { id: 'openrouter', name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1' },
-      { id: 'zai', name: 'Z.ai (GLM)', base_url: 'https://api.z.ai/api/paas/v4' },
+      { id: 'zai', name: 'Z.ai (GLM)', base_url: 'https://api.z.ai/api/coding/paas/v4' },
       { id: 'openai', name: 'OpenAI', base_url: 'https://api.openai.com/v1' },
       { id: 'groq', name: 'Groq', base_url: 'https://api.groq.com/openai/v1' },
       { id: 'ollama', name: 'Ollama (Local)', base_url: 'http://localhost:11434/v1' }
@@ -1202,11 +1255,11 @@ function renderProvidersList() {
     'zai': {
       icon: '⚡',
       displayName: 'Z.ai (GLM)',
-      badge: 'Zhipu AI GLM-4',
-      defaultUrl: 'https://api.z.ai/api/paas/v4',
+      badge: 'Zhipu AI GLM Coding Plan',
+      defaultUrl: 'https://api.z.ai/api/coding/paas/v4',
       keyPlaceholder: 'Paste Z.ai API Key (e.g. 1a2b3c4d...)',
-      keyLink: 'https://z.ai',
-      keyLinkLabel: 'Get Z.ai Key ↗',
+      keyLink: 'https://z.ai/manage-apikey/coding-plan/personal/usage',
+      keyLinkLabel: 'GLM Coding Plan ↗',
       planToggle: true
     },
     'deepseek': {
@@ -2409,6 +2462,29 @@ async function handleSendMessage() {
   if (historyMessages.length === 0) {
     historyMessages.push({ role: 'user', content: userPayload });
   }
+  // Check if Arena mode is active — run dual model comparison
+  if (window.DeepHarnessArena && window.DeepHarnessArena.isActive()) {
+    const prompt = historyMessages[historyMessages.length - 1]?.content || userPayload;
+    const history = historyMessages.slice(0, -1);
+    await window.DeepHarnessArena.runArena(prompt, history);
+    state.isStreaming = false;
+    return;
+  }
+
+  await executeChatStream(streamRow, historyMessages);
+}
+
+// ==========================================================================
+// Central Chat Stream Executor (supports live streaming, R1 reasoning & auto-resume)
+// ==========================================================================
+
+async function executeChatStream(streamRow, historyMessages) {
+  if (!streamRow) return;
+
+  // Set streaming state
+  state.isStreaming = true;
+  if (el.sendBtn) el.sendBtn.disabled = true;
+  if (el.abortFloatingBar) el.abortFloatingBar.style.display = 'block';
 
   // Scoped references to elements inside streamRow (prevents ID collisions across turns!)
   let liveReasoningText = '';
@@ -2441,7 +2517,13 @@ async function handleSendMessage() {
     });
 
     if (!response.ok) {
-      throw new Error(`Server returned HTTP ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      const errText = errData.error || `Server returned HTTP ${response.status}`;
+      const errObj = new Error(errText);
+      errObj.isQuotaExhausted = errData.isQuotaExhausted || isQuotaOrModelError(errText, response.status);
+      errObj.statusCode = response.status;
+      errObj.failedModel = errData.failedModel || state.activeModel;
+      throw errObj;
     }
 
     const reader = response.body.getReader();
@@ -2469,11 +2551,11 @@ async function handleSendMessage() {
             state.activeStreamId = payload.streamId;
           } else if (payload.type === 'reasoning') {
             // R1 Reasoning phase
-            if (liveReasoningBox.style.display === 'none') {
+            if (liveReasoningBox && liveReasoningBox.style.display === 'none') {
               liveReasoningBox.style.display = 'block';
             }
             liveReasoningText += payload.delta;
-            liveReasoningContent.textContent = liveReasoningText;
+            if (liveReasoningContent) liveReasoningContent.textContent = liveReasoningText;
             if (streamingStatusText) streamingStatusText.textContent = 'Reasoning...';
             scrollToBottom();
           } else if (payload.type === 'content') {
@@ -2481,13 +2563,15 @@ async function handleSendMessage() {
             if (state.thinkingTimerInterval) {
               clearInterval(state.thinkingTimerInterval);
               state.thinkingTimerInterval = null;
-              liveReasoningBox.classList.remove('thinking-active');
+              if (liveReasoningBox) liveReasoningBox.classList.remove('thinking-active');
             }
             if (streamingStatusText) streamingStatusText.textContent = 'Generating...';
 
             liveContentText += payload.delta;
-            liveAssistantContent.innerHTML = renderMarkdown(liveContentText);
-            bindCodeBlockActions(streamRow);
+            if (liveAssistantContent) {
+              liveAssistantContent.innerHTML = renderMarkdown(liveContentText);
+              bindCodeBlockActions(streamRow);
+            }
             scrollToBottom();
           } else if (payload.type === 'done') {
             // Finished successfully
@@ -2529,9 +2613,71 @@ async function handleSendMessage() {
             if (streamingStatusText) streamingStatusText.textContent = 'Aborted';
             showToast('Generation halted to preserve tokens', 'info');
           } else if (payload.type === 'error') {
-            if (streamingStatusText) streamingStatusText.textContent = 'Error';
-            if (liveAssistantContent) liveAssistantContent.innerHTML = `<span style="color: var(--red-danger);">⚠️ ${escapeHtml(payload.error)}</span>`;
-            showToast(payload.error, 'error');
+            const isQuota = payload.isQuotaExhausted || isQuotaOrModelError(payload.error, payload.statusCode);
+            if (streamingStatusText) streamingStatusText.textContent = isQuota ? 'Quota Limit' : 'Error';
+
+            if (isQuota) {
+              state.pendingTurnRetry = {
+                streamRow,
+                historyMessages,
+                failedModel: state.activeModel,
+                error: payload.error
+              };
+
+              if (liveAssistantContent) {
+                liveAssistantContent.innerHTML = `
+                  <div class="quota-exhausted-alert">
+                    <div class="qea-header">
+                      <span class="qea-icon">⚡</span>
+                      <div class="qea-text">
+                        <div class="qea-title">AI Quota / Usage Exhausted (${escapeHtml(state.activeModel)})</div>
+                        <div class="qea-msg">${escapeHtml(payload.error)}</div>
+                      </div>
+                    </div>
+                    <div class="qea-actions">
+                      <button type="button" class="qea-switch-btn" id="inlineSwitchResumeBtn">
+                        <span>⚡ Switch Model & Resume Work</span>
+                      </button>
+                      <button type="button" class="qea-settings-btn" id="inlineManageProvidersBtn">
+                        <span>⚙️ Manage Providers ↗</span>
+                      </button>
+                    </div>
+                  </div>
+                `;
+
+                const resumeBtn = liveAssistantContent.querySelector('#inlineSwitchResumeBtn');
+                if (resumeBtn) {
+                  resumeBtn.onclick = () => openQuotaExhaustedModal({
+                    failedModel: state.activeModel,
+                    error: payload.error,
+                    statusCode: payload.statusCode
+                  });
+                }
+                const settingsBtn = liveAssistantContent.querySelector('#inlineManageProvidersBtn');
+                if (settingsBtn) {
+                  settingsBtn.onclick = () => {
+                    openSettings();
+                    const provTab = document.getElementById('tabBtnProviders');
+                    if (provTab) provTab.click();
+                  };
+                }
+              }
+
+              showToast(`Quota exhausted on ${state.activeModel}. Select backup model to resume!`, 'error');
+
+              // Automatically pop up model selector dialog smoothly!
+              setTimeout(() => {
+                openQuotaExhaustedModal({
+                  failedModel: state.activeModel,
+                  error: payload.error,
+                  statusCode: payload.statusCode
+                });
+              }, 220);
+
+            } else {
+              if (liveAssistantContent) liveAssistantContent.innerHTML = `<span style="color: var(--red-danger);">⚠️ ${escapeHtml(payload.error)}</span>`;
+              showToast(payload.error, 'error');
+            }
           }
         } catch (e) {
           // ignore chunk parse issues
@@ -2539,15 +2685,333 @@ async function handleSendMessage() {
       }
     }
   } catch (err) {
-    if (streamingStatusText) streamingStatusText.textContent = 'Failed';
-    if (liveAssistantContent) liveAssistantContent.innerHTML = `<span style="color: var(--red-danger);">⚠️ Error: ${escapeHtml(err.message)}</span>`;
-    showToast(err.message, 'error');
+    const isQuota = err.isQuotaExhausted || isQuotaOrModelError(err.message, err.statusCode);
+    if (streamingStatusText) streamingStatusText.textContent = isQuota ? 'Quota Limit' : 'Failed';
+
+    if (isQuota) {
+      state.pendingTurnRetry = {
+        streamRow,
+        historyMessages,
+        failedModel: state.activeModel,
+        error: err.message
+      };
+
+      if (liveAssistantContent) {
+        liveAssistantContent.innerHTML = `
+          <div class="quota-exhausted-alert">
+            <div class="qea-header">
+              <span class="qea-icon">⚡</span>
+              <div class="qea-text">
+                <div class="qea-title">AI Quota / Usage Exhausted (${escapeHtml(state.activeModel)})</div>
+                <div class="qea-msg">${escapeHtml(err.message)}</div>
+              </div>
+            </div>
+            <div class="qea-actions">
+              <button type="button" class="qea-switch-btn" id="inlineSwitchResumeBtnCatch">
+                <span>⚡ Switch Model & Resume Work</span>
+              </button>
+              <button type="button" class="qea-settings-btn" id="inlineManageProvidersBtnCatch">
+                <span>⚙️ Manage Providers ↗</span>
+              </button>
+            </div>
+          </div>
+        `;
+
+        const resumeBtn = liveAssistantContent.querySelector('#inlineSwitchResumeBtnCatch');
+        if (resumeBtn) {
+          resumeBtn.onclick = () => openQuotaExhaustedModal({
+            failedModel: state.activeModel,
+            error: err.message,
+            statusCode: err.statusCode
+          });
+        }
+        const settingsBtn = liveAssistantContent.querySelector('#inlineManageProvidersBtnCatch');
+        if (settingsBtn) {
+          settingsBtn.onclick = () => {
+            openSettings();
+            const provTab = document.getElementById('tabBtnProviders');
+            if (provTab) provTab.click();
+          };
+        }
+      }
+
+      showToast(`Quota limit reached on ${state.activeModel}. Please select backup model!`, 'error');
+
+      setTimeout(() => {
+        openQuotaExhaustedModal({
+          failedModel: state.activeModel,
+          error: err.message,
+          statusCode: err.statusCode
+        });
+      }, 220);
+
+    } else {
+      if (liveAssistantContent) liveAssistantContent.innerHTML = `<span style="color: var(--red-danger);">⚠️ Error: ${escapeHtml(err.message)}</span>`;
+      showToast(err.message, 'error');
+    }
   } finally {
     if (state.thinkingTimerInterval) clearInterval(state.thinkingTimerInterval);
     state.isStreaming = false;
     state.activeStreamId = null;
-    el.sendBtn.disabled = false;
-    el.abortFloatingBar.style.display = 'none';
+    if (el.sendBtn) el.sendBtn.disabled = false;
+    if (el.abortFloatingBar) el.abortFloatingBar.style.display = 'none';
+  }
+}
+
+// ==========================================================================
+// AI Quota / Limit Exhaustion & Seamless Auto-Resume Model Switcher
+// ==========================================================================
+
+function isQuotaOrModelError(errorMsg, statusCode) {
+  if (statusCode === 429 || statusCode === 402 || statusCode === 403 || statusCode === 401) return true;
+  if (!errorMsg) return false;
+  const lower = String(errorMsg).toLowerCase();
+  const quotaKeywords = [
+    'quota', 'balance', 'insufficient', 'credit', 'exceeded',
+    'rate limit', 'too many requests', 'exhaust', '1113', '1114', '1301', '1302',
+    'payment required', 'plan limit', 'billing', 'usage limit',
+    'tokens per minute', 'out of credits', 'key is required',
+    'invalid api key', 'unauthorized', '401', '402', '429'
+  ];
+  return quotaKeywords.some(kw => lower.includes(kw));
+}
+
+function openQuotaExhaustedModal(details = {}) {
+  const failedModel = details.failedModel || state.activeModel || 'Unknown Model';
+  const errorMsg = details.error || 'Usage limit or balance exhausted on this model';
+
+  if (el.quotaFailedModelName) el.quotaFailedModelName.textContent = failedModel;
+  if (el.quotaFailedErrorDetail) el.quotaFailedErrorDetail.textContent = errorMsg;
+
+  renderQuotaModelsGrid(failedModel);
+
+  if (el.quotaExhaustedModal) {
+    el.quotaExhaustedModal.style.display = 'flex';
+  }
+}
+
+function closeQuotaExhaustedModal() {
+  if (el.quotaExhaustedModal) {
+    el.quotaExhaustedModal.style.display = 'none';
+  }
+}
+
+function renderQuotaModelsGrid(failedModel) {
+  if (!el.quotaModelsGrid) return;
+  el.quotaModelsGrid.innerHTML = '';
+
+  // 1. Determine key availability per provider from state.providers
+  const providerKeyMap = {};
+  for (const p of state.providers || []) {
+    providerKeyMap[p.id] = Boolean(p.api_key && p.api_key.trim().length > 0);
+  }
+  if (state.settings?.deepseek_api_key) {
+    providerKeyMap['deepseek'] = true;
+  }
+
+  // 2. Candidate models from state.models or fallbacks
+  let models = [...(state.models || [])];
+  if (models.length === 0) {
+    models = [
+      { id: 'glm-5.3-flash', provider_id: 'zai', provider_name: 'Z.ai (GLM)', name: 'Z.ai: GLM-5.3-Flash (Coding Plan)' },
+      { id: 'deepseek-chat', provider_id: 'deepseek', provider_name: 'DeepSeek', name: 'deepseek-chat (V4.1 Coder)' },
+      { id: 'deepseek-reasoner', provider_id: 'deepseek', provider_name: 'DeepSeek', name: 'deepseek-reasoner (R1 Thinking)' },
+      { id: 'deepseek/deepseek-r1', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: DeepSeek R1' },
+      { id: 'anthropic/claude-3.5-sonnet', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: Claude 3.5 Sonnet' },
+      { id: 'openai/gpt-4o', provider_id: 'openrouter', provider_name: 'OpenRouter', name: 'OpenRouter: GPT-4o' }
+    ];
+  }
+
+  // Calculate readiness & priority
+  const enriched = models.map(m => {
+    const pId = m.provider_id || (m.id.startsWith('glm') ? 'zai' : (m.id.startsWith('deepseek') ? 'deepseek' : 'openrouter'));
+    const isReady = pId === 'ollama' || Boolean(providerKeyMap[pId]) || (m.has_key === 1);
+    const isFailed = (m.id === failedModel);
+    return { ...m, resolvedProviderId: pId, isReady, isFailed };
+  });
+
+  // Sort: Ready & not failed first, then ready & failed, then not ready
+  enriched.sort((a, b) => {
+    if (a.isFailed && !b.isFailed) return 1;
+    if (!a.isFailed && b.isFailed) return -1;
+    if (a.isReady && !b.isReady) return -1;
+    if (!a.isReady && b.isReady) return 1;
+    return a.id.localeCompare(b.id);
+  });
+
+  // Choose default selected model: first ready, non-failed model
+  let bestCandidate = enriched.find(m => m.isReady && !m.isFailed)?.id;
+  if (!bestCandidate) {
+    bestCandidate = enriched.find(m => !m.isFailed)?.id || enriched[0]?.id;
+  }
+  state.selectedQuotaModel = bestCandidate;
+  if (el.targetResumeModelName) {
+    el.targetResumeModelName.textContent = bestCandidate || 'Model';
+  }
+
+  const getProviderIcon = (pId, modelId) => {
+    if (pId === 'zai') return '⚡';
+    if (pId === 'deepseek') return modelId.includes('reasoner') || modelId.includes('r1') ? '🧠' : '⚡';
+    if (pId === 'openrouter') return '🌐';
+    if (pId === 'openai') return '🤖';
+    if (pId === 'groq') return '⚡';
+    if (pId === 'ollama') return '🦙';
+    return '🤖';
+  };
+
+  const getCapabilityTag = (modelId) => {
+    if (modelId.includes('reasoner') || modelId.includes('r1')) return '🧠 Reasoning';
+    if (modelId.includes('flash') || modelId.includes('chat') || modelId.includes('turbo')) return '⚡ Ultra Fast';
+    if (modelId.includes('sonnet') || modelId.includes('4o')) return '🌐 Flagship';
+    return '💻 Coding';
+  };
+
+  enriched.forEach(m => {
+    const card = document.createElement('div');
+    card.className = `qmg-card ${m.id === state.selectedQuotaModel ? 'active' : ''}`;
+    card.dataset.modelId = m.id;
+
+    const icon = getProviderIcon(m.resolvedProviderId, m.id);
+    const capTag = getCapabilityTag(m.id);
+
+    let statusBadgeHtml = '';
+    if (m.isFailed) {
+      statusBadgeHtml = `<span class="qmg-badge-exhausted">⚠️ Quota Exhausted</span>`;
+    } else if (m.isReady) {
+      statusBadgeHtml = `<span class="qmg-badge-ready">● Ready (Configured)</span>`;
+    } else {
+      statusBadgeHtml = `<span class="qmg-badge-no-key">○ Key Required</span>`;
+    }
+
+    const providerDisplay = m.provider_name || (m.resolvedProviderId ? m.resolvedProviderId.toUpperCase() : 'AI');
+
+    card.innerHTML = `
+      <div class="qmg-left">
+        <span class="qmg-icon">${icon}</span>
+        <div class="qmg-info">
+          <div class="qmg-name">${escapeHtml(m.name || m.id)}</div>
+          <div class="qmg-sub">${escapeHtml(providerDisplay)} • <span class="qmg-badge-type">${capTag}</span></div>
+        </div>
+      </div>
+      <div class="qmg-right">
+        ${statusBadgeHtml}
+      </div>
+    `;
+
+    // Click to select
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.qmg-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      state.selectedQuotaModel = m.id;
+      if (el.targetResumeModelName) el.targetResumeModelName.textContent = m.id;
+    });
+
+    // Double-click to instant switch and resume!
+    card.addEventListener('dblclick', () => {
+      state.selectedQuotaModel = m.id;
+      resumeTurnWithModel(m.id);
+    });
+
+    el.quotaModelsGrid.appendChild(card);
+  });
+}
+
+async function resumeTurnWithModel(newModelId) {
+  if (!newModelId) return;
+
+  closeQuotaExhaustedModal();
+
+  // 1. Update state & UI
+  state.activeModel = newModelId;
+  if (el.modelSelector) el.modelSelector.value = newModelId;
+  updateModelRateBadge(newModelId);
+  updateSessionModel(newModelId);
+
+  // Sync execution mode buttons
+  const isReasoner = newModelId.includes('reasoner') || newModelId.includes('r1');
+  state.executionMode = isReasoner ? 'deep' : 'fast';
+  if (el.modeFastBtn) el.modeFastBtn.classList.toggle('active', !isReasoner);
+  if (el.modeDeepBtn) el.modeDeepBtn.classList.toggle('active', isReasoner);
+
+  // 2. Check if we have a pending turn to retry
+  if (!state.pendingTurnRetry) {
+    showToast(`Active model switched to ${newModelId}`, 'success');
+    return;
+  }
+
+  const { streamRow, historyMessages } = state.pendingTurnRetry;
+  state.pendingTurnRetry = null; // Clear so it doesn't double-trigger
+
+  showToast(`⚡ Switched to ${newModelId}! Resuming response...`, 'success');
+
+  // Reset streamRow header & content for fresh response
+  if (streamRow) {
+    const badge = streamRow.querySelector('.msg-model-badge');
+    if (badge) badge.textContent = newModelId;
+    const statusText = streamRow.querySelector('.streaming-status');
+    if (statusText) statusText.textContent = isReasoner ? 'Reasoning...' : 'Generating...';
+
+    const reasoningBox = streamRow.querySelector('.reasoning-box');
+    const reasoningTitle = streamRow.querySelector('.reasoning-title');
+    const reasoningContent = streamRow.querySelector('.reasoning-content');
+    if (reasoningTitle) reasoningTitle.textContent = `${newModelId} Thinking Process`;
+    if (reasoningContent) reasoningContent.textContent = '';
+    if (reasoningBox) {
+      reasoningBox.style.display = isReasoner ? 'block' : 'none';
+      reasoningBox.classList.add('thinking-active');
+    }
+
+    const assistantContent = streamRow.querySelector('.assistant-content');
+    if (assistantContent) {
+      assistantContent.innerHTML = `<span style="color: var(--text-dim); font-style: italic;">Resuming generation with ${escapeHtml(newModelId)}...</span>`;
+    }
+  }
+
+  // 3. Resume streaming seamlessly!
+  await executeChatStream(streamRow, historyMessages);
+}
+
+async function saveQuickKeyFromQuotaModal() {
+  const providerId = el.quickKeyProviderSelect?.value;
+  const apiKey = el.quickKeyInput?.value?.trim();
+  if (!providerId || !apiKey) {
+    showToast('Please enter an API Key', 'error');
+    return;
+  }
+
+  showToast(`Saving API Key for ${providerId}...`, 'info');
+  try {
+    const provDefaults = {
+      'deepseek': { name: 'DeepSeek', base_url: 'https://api.deepseek.com' },
+      'zai': { name: 'Z.ai (GLM)', base_url: 'https://api.z.ai/api/coding/paas/v4' },
+      'openrouter': { name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1' },
+      'openai': { name: 'OpenAI', base_url: 'https://api.openai.com/v1' },
+      'groq': { name: 'Groq', base_url: 'https://api.groq.com/openai/v1' }
+    };
+    const def = provDefaults[providerId] || { name: providerId, base_url: '' };
+
+    const res = await fetch('/api/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: providerId,
+        name: def.name,
+        base_url: def.base_url,
+        api_key: apiKey
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (el.quickKeyInput) el.quickKeyInput.value = '';
+      showToast(`✅ API Key saved for ${def.name}!`, 'success');
+      await loadProviders();
+      await loadModels();
+      renderQuotaModelsGrid(state.pendingTurnRetry?.failedModel || state.activeModel);
+    } else {
+      showToast(data.error || 'Failed to save key', 'error');
+    }
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
   }
 }
 

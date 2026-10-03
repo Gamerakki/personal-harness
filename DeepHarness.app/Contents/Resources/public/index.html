@@ -468,7 +468,7 @@
           </button>
           <button type="button" class="btn-studio-action-xs primary" id="studioNewProjectBtn" title="Create New App or Project">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>+ New</span>
+            <span>New</span>
           </button>
         </div>
 
@@ -495,6 +495,14 @@
           <button class="btn-studio-action ghost" id="studioHeaderGithubBtn" style="display: none;" title="Open Git & GitHub Manager">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             <span>GitHub</span>
+          </button>
+          <button class="btn-studio-action ghost" id="studioArchVisBtn" title="Visualize Codebase Architecture">
+            <span>🗺️</span>
+            <span>Architecture</span>
+          </button>
+          <button class="btn-studio-action ghost" id="studioSecurityScanBtn" title="Scan for Secrets & Vulnerabilities">
+            <span>🛡️</span>
+            <span>Security</span>
           </button>
           <button class="btn-close-studio" id="closeStudioBtn" title="Close Studio">✕</button>
         </div>
@@ -777,9 +785,17 @@
             <!-- Changed Files List -->
             <div class="git-changes-section">
               <div class="gcs-header">
-                <span>CHANGES</span>
-                <span class="count-pill" id="gitChangedCount">0</span>
+                <div class="gcs-header-left">
+                  <span>CHANGES</span>
+                  <span class="count-pill" id="gitChangedCount">0</span>
+                </div>
+                <div class="git-security-badge-wrap">
+                  <button type="button" class="git-security-badge clean" id="gitSecurityBadge" title="Pre-Commit Secret Scanner">
+                    🛡️ Secrets Clean
+                  </button>
+                </div>
               </div>
+              <div id="gitSecretCommitWarning" class="git-security-alert-box" style="display: none;"></div>
               <div class="git-changes-list" id="gitChangesList">
                 <div class="git-clean-msg">Workspace is clean. No uncommitted changes.</div>
               </div>
@@ -890,6 +906,9 @@
                 </div>
               </div>
               <div class="pt-right">
+                <button type="button" class="btn-pt-mobile-qr" id="previewMobileQrBtn" title="Test on Mobile Device via QR Code">
+                  <span>📱 Mobile QR</span>
+                </button>
                 <div class="device-toggles">
                   <button type="button" class="btn-device active" id="previewDeviceDesktop" title="Desktop Viewport (100%)">💻</button>
                   <button type="button" class="btn-device" id="previewDeviceTablet" title="Tablet Viewport (768px)">📱</button>
@@ -1019,6 +1038,8 @@
               </div>
               <button class="btn-secondary" id="addProviderBtn" style="margin-top: 8px;">Add Provider & Fetch Models</button>
             </div>
+          </div>
+
           <!-- TAB 3: GitHub & Workspace -->
           <div class="tab-pane" id="tabGitHub" style="display: none;">
             <div class="form-group">
@@ -1253,6 +1274,8 @@
           <button class="btn-primary" id="confirmEditRemoteBtn">Save Remote</button>
         </div>
       </div>
+    </div>
+
     <!-- Create New App / Project Modal -->
     <div class="modal-backdrop studio-modal-backdrop" id="newProjectModal" style="display: none;">
       <div class="modal-card modal-card-large">
@@ -1376,6 +1399,80 @@
       </div>
     </div>
 
+    <!-- AI Quota Exhausted & Auto-Resume Model Switcher Modal -->
+    <div class="modal-backdrop studio-modal-backdrop" id="quotaExhaustedModal" style="display: none;">
+      <div class="modal-card modal-card-large quota-modal-card">
+        <div class="modal-header">
+          <div class="mh-title">
+            <span class="quota-modal-pulse-icon">⚡</span>
+            <div>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 600;">AI Usage Exhausted — Switch Model</h3>
+              <p class="quota-modal-sub">
+                Select an alternative model to seamlessly continue your work without losing context.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" id="closeQuotaModalBtn">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 20px; gap: 14px;">
+          <!-- Exhausted Notice Banner -->
+          <div class="quota-exhausted-banner" id="quotaExhaustedBanner">
+            <div class="qeb-icon">⚠️</div>
+            <div class="qeb-content">
+              <div class="qeb-title">
+                Model Limit Reached: <strong id="quotaFailedModelName">deepseek-reasoner</strong>
+              </div>
+              <div class="qeb-detail" id="quotaFailedErrorDetail">
+                Insufficient Balance (Error 402)
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Choose Replacement Model -->
+          <div class="quota-switch-section">
+            <div class="qss-header">
+              <span class="qss-label">CHOOSE AI MODEL & RESUME WORK</span>
+              <span class="qss-hint">Ready & configured models shown first</span>
+            </div>
+
+            <!-- Model Cards Grid -->
+            <div class="quota-models-grid" id="quotaModelsGrid">
+              <!-- Dynamically populated via renderQuotaModelsGrid() -->
+            </div>
+          </div>
+
+          <!-- Optional Quick API Key Input if user wants to add key on the fly -->
+          <details class="quota-key-accordion" id="quotaKeyAccordion">
+            <summary class="qka-summary">
+              <span>+ Need to add or update an API Key for another provider?</span>
+            </summary>
+            <div class="qka-body">
+              <div class="qka-row">
+                <select id="quickKeyProviderSelect" class="form-input">
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="zai">Z.ai (GLM Coding Plan)</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="groq">Groq</option>
+                </select>
+                <input type="password" id="quickKeyInput" class="form-input" placeholder="Paste API Key..." />
+                <button type="button" class="btn-secondary" id="saveQuickKeyBtn">Save Key</button>
+              </div>
+            </div>
+          </details>
+
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn-secondary" id="cancelQuotaModalBtn">Dismiss</button>
+          <button type="button" class="btn-primary" id="confirmSwitchAndResumeBtn" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8); font-weight: 600;">
+            🚀 Switch to <span id="targetResumeModelName">Selected Model</span> & Resume Work
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hidden telemetry helpers -->
     <span id="activePersonaDisplay" style="display: none;"></span>
 
@@ -1384,6 +1481,14 @@
 
   </div>
 
-  <script src="app.js?v=5.5"></script>
+  <script src="modules/autofix.js?v=6.0"></script>
+  <script src="modules/code_applier.js?v=6.0"></script>
+  <script src="modules/smart_mentions.js?v=6.0"></script>
+  <script src="modules/voice_input.js?v=6.0"></script>
+  <script src="modules/mobile_preview.js?v=6.0"></script>
+  <script src="modules/security_scanner.js?v=6.0"></script>
+  <script src="modules/model_arena.js?v=6.0"></script>
+  <script src="modules/architecture_visualizer.js?v=6.0"></script>
+  <script src="app.js?v=6.0"></script>
 </body>
 </html>
